@@ -1,4 +1,4 @@
-```react
+react
 import React, { useState, useEffect } from 'react';
 import {
   Search, MapPin, Store, Tag, Phone, Clock, Truck, CheckCircle,
@@ -3104,4 +3104,3 @@ export default function App() {
     </div>
   );
 }
-```
