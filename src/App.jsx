@@ -10,8 +10,8 @@ import {
 // 0. CONEXIÓN A SUPABASE (CREDENCIALES PÚBLICAS DEL PROYECTO)
 // ============================================================================
 
-const SUPABASE_URL = 'https://zogdgendyrqktymlwhzf.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_w601K0oEr5Eg-V8Jg2XAnQ_g_lAUCdn';
+const SUPABASE_URL = 'https://zogdgendyrqktymlwhzf.supabase.co/rest/v1/;
+const SUPABASE_ANON_KEY = 'sb_secret_db8HViN18VnV3e2yuRbS-A_CxYZFOTk';
 
 async function supabaseFetch(endpoint, options = {}, accessToken = null) {
   const controller = new AbortController();
