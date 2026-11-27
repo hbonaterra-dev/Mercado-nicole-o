@@ -484,5 +484,100 @@ function VistaCatalogo({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-neutral-100">
-          <button
-            t
+                      <button
+              type="button"
+              onClick={() => {
+                setCategoriaFiltro('todas');
+                setSoloOfertas(false);
+                setSoloEnvio(false);
+                setTipoFiltro('Todos');
+                setBusquedaGlobal('');
+              }}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded text-sm cursor-pointer"
+            >
+              Restablecer filtros
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {productosFiltrados.map((prod) => {
+            const com = comercios.find((c) => c.id === prod.comercioId);
+            return (
+              <div
+                key={prod.id}
+                className="bg-white border border-neutral-200/80 rounded-md overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between group"
+              >
+                <div>
+                  <div
+                    onClick={() => com && verFichaComercio(com.id)}
+                    className="h-44 bg-white border-b border-neutral-100 relative flex items-center justify-center text-6xl cursor-pointer overflow-hidden"
+                  >
+                    {prod.imagenUrl ? (
+                      <img
+                        src={prod.imagenUrl}
+                        alt={prod.nombre}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <span>{prod.emoji}</span>
+                    )}
+                    {prod.esOferta && (
+                      <span className="absolute top-2.5 left-2.5 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                        Oferta del día
+                      </span>
+                    )}
+                    <span className="absolute bottom-2 right-2 bg-neutral-100/90 text-neutral-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+                      {prod.tipo}
+                    </span>
+                  </div>
+
+                  <div className="p-4">
+                    {prod.precioAnterior && (
+                      <p className="text-xs text-neutral-400 line-through">
+                        {formatearPrecio(prod.precioAnterior)}
+                      </p>
+                    )}
+                    <p className="text-xl font-bold text-neutral-900">{formatearPrecio(prod.precio)}</p>
+                    <h3 className="font-semibold text-neutral-800 text-sm mt-1 line-clamp-2">
+                      {prod.nombre}
+                    </h3>
+                    <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{prod.descripcion}</p>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4 pt-2 border-t border-neutral-100 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => com && verFichaComercio(com.id)}
+                    className="text-left min-w-0 cursor-pointer"
+                  >
+                    <p className="text-xs font-bold text-neutral-800 truncate hover:text-orange-600">
+                      {com?.nombre}
+                    </p>
+                    <p className="text-[11px] text-neutral-500 truncate">{com?.zona}</p>
+                  </button>
+
+                  {com && (
+                    <a
+                      href={crearLinkWhatsApp(
+                        com.whatsapp,
+                        `Hola ${com.nombre}, vi "${prod.nombre}" (${formatearPrecio(prod.precio)}) en Mercado Nicoleño. ¿Tenés disponibilidad?`
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded shrink-0 transition"
+                    >
+                      Consultar
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
