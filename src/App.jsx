@@ -172,9 +172,6 @@ const PRODUCTOS_DEMO = [
 // 2. UTILIDADES DE RED, CÁLCULO GEOGRÁFICO Y FORMATO
 // ============================================================================
 
-/**
- * Realiza una petición HTTP a Supabase REST API con timeout de seguridad.
- */
 async function sbFetch(endpoint, options = {}, token = null) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIEMPO_ESPERA_RED_MS);
@@ -204,9 +201,6 @@ async function sbFetch(endpoint, options = {}, token = null) {
   }
 }
 
-/**
- * Autentica o registra usuarios contra Supabase Auth.
- */
 async function sbAuth(path, body) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIEMPO_ESPERA_RED_MS);
@@ -232,9 +226,6 @@ async function sbAuth(path, body) {
   }
 }
 
-/**
- * Sube una imagen al bucket público de Supabase Storage y retorna su URL pública.
- */
 async function sbUploadImg(file, token = null) {
   const extension = (file.name && file.name.split('.').pop()) || 'jpg';
   const nombreArchivo = `prod-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extension}`;
@@ -257,9 +248,6 @@ async function sbUploadImg(file, token = null) {
   return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${nombreArchivo}`;
 }
 
-/**
- * Calcula la distancia en kilómetros entre dos puntos geográficos (fórmula de Haversine).
- */
 function calcKm(lat1, lon1, lat2, lon2) {
   const radioTierraKm = 6371;
   const dLat = ((Number(lat2) - Number(lat1)) * Math.PI) / 180;
@@ -302,7 +290,7 @@ function waUrl(telefono, mensaje) {
 }
 
 // ============================================================================
-// 3. SUB-VISTAS DE LA APLICACIÓN
+// 3. SUB-VISTAS DE LA APLICACIÓN (CON TÍTULOS Y SUBTÍTULOS CENTRADOS)
 // ============================================================================
 
 function VistaCercanos({ comerciosPublicos, ubicacion, pedirGPS, elegirZona, verComercio }) {
@@ -313,11 +301,11 @@ function VistaCercanos({ comerciosPublicos, ubicacion, pedirGPS, elegirZona, ver
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
       <div className="bg-white border border-neutral-200 rounded-md p-5 text-center space-y-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 flex items-center justify-center gap-2">
-          <Compass className="w-6 h-6 text-orange-500" />
+        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 text-center flex items-center justify-center gap-2">
+          <Compass className="w-6 h-6 text-orange-500 shrink-0" />
           <span>Comercios cerca de mí en San Nicolás</span>
         </h1>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-neutral-600 text-center">
           Ubicación de referencia: <strong>{ubicacion.nombre}</strong>
         </p>
 
@@ -455,9 +443,12 @@ function VistaCatalogo({ productos, comercios, categoria, setCategoria, busqueda
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
       <div className="bg-white border border-neutral-200 rounded-md p-5 text-center space-y-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">
+        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 text-center">
           Catálogo de productos y servicios
         </h1>
+        <p className="text-xs sm:text-sm text-neutral-500 text-center">
+          Explorá ofertas y artículos disponibles en comercios de San Nicolás
+        </p>
 
         <div className="flex flex-wrap justify-center gap-2">
           <button
@@ -526,8 +517,8 @@ function VistaCatalogo({ productos, comercios, categoria, setCategoria, busqueda
       {lista.length === 0 ? (
         <div className="bg-white border border-neutral-200 rounded-md p-10 text-center space-y-2">
           <Package className="w-9 h-9 text-neutral-400 mx-auto" />
-          <h2 className="font-bold text-neutral-800">No hay artículos con esos filtros</h2>
-          <p className="text-xs text-neutral-500">
+          <h2 className="font-bold text-neutral-800 text-center">No hay artículos con esos filtros</h2>
+          <p className="text-xs text-neutral-500 text-center">
             Probá cambiando de rubro o limpiando los filtros activos.
           </p>
         </div>
@@ -560,4 +551,1394 @@ function VistaCatalogo({ productos, comercios, categoria, setCategoria, busqueda
                       </span>
                     )}
                   </div>
-               
+                  <div className="p-4 text-center">
+                    {prod.precioAnterior && (
+                      <p className="text-xs text-neutral-400 line-through">
+                        {fmtPrecio(prod.precioAnterior)}
+                      </p>
+                    )}
+                    <p className="text-lg font-bold text-neutral-900">{fmtPrecio(prod.precio)}</p>
+                    <h3 className="font-semibold text-sm text-neutral-800 mt-1 line-clamp-2 text-center">
+                      {prod.nombre}
+                    </h3>
+                    {prod.descripcion && (
+                      <p className="text-xs text-neutral-500 mt-1 line-clamp-2 text-center">
+                        {prod.descripcion}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4 pt-2 border-t border-neutral-100 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => com && verComercio(com.id)}
+                    className="text-left min-w-0 cursor-pointer"
+                  >
+                    <p className="text-xs font-bold text-neutral-800 truncate">{com?.nombre}</p>
+                    <p className="text-[11px] text-neutral-500 truncate">{com?.zona}</p>
+                  </button>
+                  {com && (
+                    <a
+                      href={waUrl(
+                        com.whatsapp,
+                        `Hola ${com.nombre}, vi "${prod.nombre}" (${fmtPrecio(prod.precio)}) en Mercado Nicoleño.`
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded shrink-0"
+                    >
+                      WhatsApp
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VistaRegistro({ setComercios, irA, notificar }) {
+  const [form, setForm] = useState({
+    nombre: '',
+    responsable: '',
+    rubro: 'alimentos',
+    direccion: '',
+    zona: ZONAS_REFERENCIA[0].nombre,
+    whatsapp: '',
+    descripcion: '',
+    envioDomicilio: true
+  });
+  const [enviando, setEnviando] = useState(false);
+  const [listo, setListo] = useState(false);
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    setEnviando(true);
+    try {
+      const z = ZONAS_REFERENCIA.find((item) => item.nombre === form.zona) || ZONAS_REFERENCIA[0];
+      const cat = CATEGORIAS.find((item) => item.id === form.rubro);
+      const nuevoLocal = {
+        id: `com-${Date.now()}`,
+        nombre: form.nombre.trim(),
+        responsable: form.responsable.trim(),
+        rubro: form.rubro,
+        tipo: 'Ambos',
+        direccion: form.direccion.trim(),
+        zona: form.zona,
+        lat: z.lat,
+        lng: z.lng,
+        whatsapp: form.whatsapp.trim(),
+        descripcion: form.descripcion.trim(),
+        horarios: 'Lun a Sáb 9:00 a 20:00',
+        abiertoAhora: true,
+        envioDomicilio: form.envioDomicilio,
+        destacado: false,
+        estado: 'pendiente',
+        emoji: cat?.icon || '🏪',
+        esReal: false
+      };
+
+      const locales = JSON.parse(localStorage.getItem('mn_comercios_local') || '[]');
+      localStorage.setItem('mn_comercios_local', JSON.stringify([nuevoLocal, ...locales]));
+      setComercios((prev) => [nuevoLocal, ...prev]);
+
+      sbFetch('comercios', {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: nuevoLocal.nombre,
+          responsable: nuevoLocal.responsable,
+          rubro: nuevoLocal.rubro,
+          direccion: nuevoLocal.direccion,
+          zona: nuevoLocal.zona,
+          lat: nuevoLocal.lat,
+          lng: nuevoLocal.lng,
+          whatsapp: nuevoLocal.whatsapp,
+          descripcion: nuevoLocal.descripcion,
+          envio_domicilio: nuevoLocal.envioDomicilio,
+          estado: 'pendiente'
+        })
+      }).catch(() => {});
+
+      setListo(true);
+      notificar('Solicitud enviada', `${nuevoLocal.nombre} quedó pendiente de revisión.`);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  if (listo) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-10">
+        <div className="bg-white border border-emerald-200 rounded-md p-6 text-center space-y-4">
+          <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto" />
+          <h2 className="text-xl font-bold text-neutral-900 text-center">Comercio registrado</h2>
+          <p className="text-sm text-neutral-600 text-center">
+            Ya podés revisarlo y aprobarlo desde el Panel Administrador.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => irA('panel_admin')}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded text-sm cursor-pointer"
+            >
+              Ir a Panel Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setListo(false);
+                setForm({
+                  nombre: '',
+                  responsable: '',
+                  rubro: 'alimentos',
+                  direccion: '',
+                  zona: ZONAS_REFERENCIA[0].nombre,
+                  whatsapp: '',
+                  descripcion: '',
+                  envioDomicilio: true
+                });
+              }}
+              className="bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold px-4 py-2.5 rounded text-sm cursor-pointer"
+            >
+              Cargar otro
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="bg-white border border-neutral-200 rounded-md p-6 space-y-4">
+        <h1 className="text-2xl font-bold text-neutral-900 text-center">Sumá tu comercio</h1>
+        <p className="text-xs text-neutral-500 text-center">
+          Completá los datos básicos de tu local o emprendimiento en San Nicolás.
+        </p>
+
+        <form onSubmit={guardar} className="space-y-3">
+          <input
+            required
+            type="text"
+            placeholder="Nombre del comercio *"
+            value={form.nombre}
+            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+          />
+          <input
+            required
+            type="text"
+            placeholder="Responsable o titular *"
+            value={form.responsable}
+            onChange={(e) => setForm({ ...form, responsable: e.target.value })}
+            className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <select
+              value={form.rubro}
+              onChange={(e) => setForm({ ...form, rubro: e.target.value })}
+              className="border border-neutral-300 rounded px-3 py-2 text-sm bg-white"
+            >
+              {CATEGORIAS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+            <select
+              value={form.zona}
+              onChange={(e) => setForm({ ...form, zona: e.target.value })}
+              className="border border-neutral-300 rounded px-3 py-2 text-sm bg-white"
+            >
+              {ZONAS_REFERENCIA.map((z) => (
+                <option key={z.nombre} value={z.nombre}>
+                  {z.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              required
+              type="text"
+              placeholder="Dirección (ej: Mitre 250) *"
+              value={form.direccion}
+              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+              className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+            />
+            <input
+              required
+              type="text"
+              placeholder="WhatsApp (ej: 5493364551234) *"
+              value={form.whatsapp}
+              onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+              className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <textarea
+            required
+            rows={3}
+            placeholder="¿Qué productos o servicios ofrecés? *"
+            value={form.descripcion}
+            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+          />
+          <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.envioDomicilio}
+              onChange={(e) => setForm({ ...form, envioDomicilio: e.target.checked })}
+            />
+            <span>Ofrezco envío a domicilio en San Nicolás</span>
+          </label>
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded text-sm cursor-pointer"
+          >
+            {enviando ? 'Guardando...' : 'Guardar comercio'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function VistaComerciante({ comercios, productos, setProductos, usuario, salir, verComercio, notificar }) {
+  const [comId, setComId] = useState(comercios[0]?.id || '');
+  const com = comercios.find((c) => c.id === comId) || comercios[0];
+  const [nombre, setNombre] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [esOferta, setEsOferta] = useState(false);
+  const [foto, setFoto] = useState(null);
+  const [preview, setPreview] = useState('');
+  const [publicando, setPublicando] = useState(false);
+
+  const publicar = async (e) => {
+    e.preventDefault();
+    const pNum = parsePrecio(precio);
+    if (!com || !nombre.trim() || pNum <= 0) return;
+
+    setPublicando(true);
+    try {
+      let imgUrl = preview && preview.startsWith('http') ? preview : null;
+      if (foto) {
+        try {
+          imgUrl = await sbUploadImg(foto, usuario?.accessToken);
+        } catch {
+          imgUrl = preview || null;
+        }
+      }
+
+      const nuevo = {
+        id: `prod-${Date.now()}`,
+        comercioId: com.id,
+        nombre: nombre.trim(),
+        categoria: com.rubro,
+        precio: pNum,
+        precioAnterior: esOferta ? Math.round(pNum * 1.15) : null,
+        esOferta,
+        disponible: true,
+        tipo: 'Producto',
+        descripcion: descripcion.trim() || `Disponible en ${com.nombre} (${com.zona}).`,
+        imagenUrl: imgUrl,
+        emoji: com.emoji,
+        esReal: Boolean(com.esReal)
+      };
+
+      const locales = JSON.parse(localStorage.getItem('mn_productos_local') || '[]');
+      localStorage.setItem('mn_productos_local', JSON.stringify([nuevo, ...locales]));
+      setProductos((prev) => [nuevo, ...prev]);
+
+      if (com.esReal) {
+        sbFetch(
+          'productos',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              comercio_id: com.id,
+              nombre: nuevo.nombre,
+              categoria: nuevo.categoria,
+              precio: nuevo.precio,
+              precio_anterior: nuevo.precioAnterior,
+              es_oferta: nuevo.esOferta,
+              disponible: true,
+              tipo: 'Producto',
+              descripcion: nuevo.descripcion,
+              imagen_url: imgUrl && imgUrl.startsWith('http') ? imgUrl : null
+            })
+          },
+          usuario?.accessToken
+        ).catch(() => {});
+      }
+
+      setNombre('');
+      setPrecio('');
+      setDescripcion('');
+      setEsOferta(false);
+      setFoto(null);
+      setPreview('');
+      notificar('Publicado', `"${nuevo.nombre}" ya figura en el catálogo.`);
+    } finally {
+      setPublicando(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+      <div className="bg-white border border-neutral-200 rounded-md p-4 text-center space-y-3">
+        <h1 className="text-lg font-bold text-neutral-900 text-center">Panel del Comerciante</h1>
+        <p className="text-xs text-neutral-500 text-center flex items-center justify-center gap-1.5">
+          <UserCheck className="w-4 h-4 text-orange-500" />
+          <span>{usuario?.email || 'Modo Simulación'}</span>
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {comercios.length > 0 && (
+            <select
+              value={com?.id || ''}
+              onChange={(e) => setComId(e.target.value)}
+              className="border border-neutral-300 rounded px-2.5 py-1.5 text-xs font-semibold bg-white"
+            >
+              {comercios.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={salir}
+            className="border border-neutral-300 hover:bg-neutral-50 rounded px-2.5 py-1.5 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Salir
+          </button>
+        </div>
+      </div>
+
+      {!com ? (
+        <div className="bg-white border border-neutral-200 rounded-md p-8 text-center text-sm text-neutral-500">
+          Registrá un comercio primero en <strong>Sumá tu local</strong>.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="bg-white border border-neutral-200 rounded-md p-5 space-y-3">
+            <div className="text-center space-y-1">
+              <h2 className="font-bold text-base text-center">Publicar en {com.nombre}</h2>
+              <button
+                type="button"
+                onClick={() => verComercio(com.id)}
+                className="text-xs font-semibold text-orange-600 inline-flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" /> Ver ficha pública
+              </button>
+            </div>
+
+            <form onSubmit={publicar} className="space-y-3">
+              <label className="border-2 border-dashed border-neutral-300 rounded p-3 flex flex-col items-center cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition">
+                {preview ? (
+                  <img src={preview} alt="Vista previa" className="w-full h-32 object-cover rounded" />
+                ) : (
+                  <>
+                    <Camera className="w-5 h-5 text-orange-500 mb-1" />
+                    <span className="text-xs font-semibold">Elegir foto del producto</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setFoto(f);
+                    const lector = new FileReader();
+                    lector.onload = () => setPreview(String(lector.result || ''));
+                    lector.readAsDataURL(f);
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              <input
+                required
+                type="text"
+                placeholder="Nombre del producto o servicio *"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+              />
+              <input
+                required
+                type="text"
+                inputMode="numeric"
+                placeholder="Precio en $ (ej: 12500) *"
+                value={precio}
+                onChange={(e) => setPrecio(e.target.value)}
+                className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+              />
+              <textarea
+                rows={2}
+                placeholder="Breve detalle (opcional)"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+              />
+              <label className="flex items-center gap-2 text-xs font-semibold text-neutral-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={esOferta}
+                  onChange={(e) => setEsOferta(e.target.checked)}
+                />
+                <span>Marcar como oferta del día</span>
+              </label>
+              <button
+                type="submit"
+                disabled={publicando}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded text-sm cursor-pointer"
+              >
+                {publicando ? 'Publicando...' : 'Publicar ahora'}
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white border border-neutral-200 rounded-md p-5 space-y-3">
+            <h2 className="font-bold text-base text-center">Publicaciones de {com.nombre}</h2>
+            {productos.filter((p) => p.comercioId === com.id).length === 0 ? (
+              <p className="text-xs text-neutral-500 text-center">
+                Todavía no cargaste publicaciones para este local.
+              </p>
+            ) : (
+              productos
+                .filter((p) => p.comercioId === com.id)
+                .map((p) => (
+                  <div
+                    key={p.id}
+                    className="py-2 border-b border-neutral-100 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{p.nombre}</p>
+                      <p className="text-xs font-bold text-orange-600">{fmtPrecio(p.precio)}</p>
+                    </div>
+                    <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold shrink-0">
+                      Activo
+                    </span>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VistaAcceso({ destino, onLogin, cancelar }) {
+  const [modo, setModo] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  const enviar = async (e) => {
+    e.preventDefault();
+    setError('');
+    setEnviando(true);
+    try {
+      const endpoint = modo === 'login' ? 'token?grant_type=password' : 'signup';
+      const data = await sbAuth(endpoint, { email: email.trim(), password });
+      onLogin({
+        email: data.user?.email || email.trim(),
+        accessToken: data.access_token || data.session?.access_token || null
+      });
+    } catch (err) {
+      setError(err.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-10">
+      <div className="bg-white border border-neutral-200 rounded-md p-6 space-y-4 text-center">
+        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded">
+          <LogIn className="w-3.5 h-3.5" />
+          <span>{destino === 'panel_admin' ? 'Acceso Administrador' : 'Acceso Comerciantes'}</span>
+        </span>
+        <h1 className="text-xl font-bold text-neutral-900 text-center">
+          {modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta de comerciante'}
+        </h1>
+        <p className="text-xs text-neutral-500 text-center">
+          Ingresá tus credenciales para administrar tu espacio en Mercado Nicoleño
+        </p>
+
+        {error && (
+          <p className="text-xs bg-red-50 text-red-700 p-2.5 rounded border border-red-200">{error}</p>
+        )}
+
+        <form onSubmit={enviar} className="space-y-3 text-left">
+          <input
+            required
+            type="email"
+            placeholder="Correo electrónico"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+          />
+          <input
+            required
+            type="password"
+            minLength={6}
+            placeholder="Contraseña (mínimo 6 caracteres)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-neutral-300 rounded px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded text-sm cursor-pointer"
+          >
+            {enviando ? 'Verificando...' : modo === 'login' ? 'Ingresar' : 'Registrarse'}
+          </button>
+        </form>
+
+        {destino !== 'panel_admin' && (
+          <button
+            type="button"
+            onClick={() => setModo(modo === 'login' ? 'signup' : 'login')}
+            className="text-xs font-bold text-orange-600 hover:underline cursor-pointer"
+          >
+            {modo === 'login' ? 'Crear cuenta nueva' : 'Ya tengo cuenta'}
+          </button>
+        )}
+
+        <div className="pt-3 border-t border-neutral-100 space-y-2">
+          <button
+            type="button"
+            onClick={() => onLogin({ email: 'Modo Simulación', accessToken: null })}
+            className="w-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold py-2 rounded cursor-pointer"
+          >
+            Entrar en Modo Simulación
+          </button>
+          <button
+            type="button"
+            onClick={cancelar}
+            className="w-full text-xs text-neutral-500 hover:text-neutral-800 cursor-pointer"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VistaAdmin({
+  comercios,
+  setComercios,
+  productos,
+  setProductos,
+  usuario,
+  salir,
+  recargar,
+  cargando,
+  verComercio,
+  notificar
+}) {
+  const [borrarComId, setBorrarComId] = useState(null);
+  const [borrarProdId, setBorrarProdId] = useState(null);
+
+  const cambiarEstado = async (c, estado) => {
+    setComercios((prev) => prev.map((item) => (item.id === c.id ? { ...item, estado } : item)));
+    const locales = JSON.parse(localStorage.getItem('mn_comercios_local') || '[]');
+    localStorage.setItem(
+      'mn_comercios_local',
+      JSON.stringify(locales.map((item) => (item.id === c.id ? { ...item, estado } : item)))
+    );
+    if (c.esReal) {
+      sbFetch(
+        `comercios?id=eq.${c.id}`,
+        { method: 'PATCH', body: JSON.stringify({ estado }) },
+        usuario?.accessToken
+      ).catch(() => {});
+    }
+    notificar('Estado actualizado', `${c.nombre} ahora está ${estado}.`);
+  };
+
+  const alternarDestacado = async (c) => {
+    const destacado = !c.destacado;
+    setComercios((prev) => prev.map((item) => (item.id === c.id ? { ...item, destacado } : item)));
+    const locales = JSON.parse(localStorage.getItem('mn_comercios_local') || '[]');
+    localStorage.setItem(
+      'mn_comercios_local',
+      JSON.stringify(locales.map((item) => (item.id === c.id ? { ...item, destacado } : item)))
+    );
+    if (c.esReal) {
+      sbFetch(
+        `comercios?id=eq.${c.id}`,
+        { method: 'PATCH', body: JSON.stringify({ destacado }) },
+        usuario?.accessToken
+      ).catch(() => {});
+    }
+    notificar(
+      destacado ? 'Comercio destacado' : 'Destacado quitado',
+      `${c.nombre} ${destacado ? 'aparecerá primero en portada.' : 'volvió al orden normal.'}`
+    );
+  };
+
+  const eliminarComercio = async (c) => {
+    setComercios((prev) => prev.filter((item) => item.id !== c.id));
+    setProductos((prev) => prev.filter((item) => item.comercioId !== c.id));
+    setBorrarComId(null);
+
+    const localesCom = JSON.parse(localStorage.getItem('mn_comercios_local') || '[]');
+    localStorage.setItem(
+      'mn_comercios_local',
+      JSON.stringify(localesCom.filter((item) => item.id !== c.id))
+    );
+
+    const localesProd = JSON.parse(localStorage.getItem('mn_productos_local') || '[]');
+    localStorage.setItem(
+      'mn_productos_local',
+      JSON.stringify(localesProd.filter((item) => item.comercioId !== c.id))
+    );
+
+    if (c.esReal) {
+      sbFetch(`comercios?id=eq.${c.id}`, { method: 'DELETE' }, usuario?.accessToken).catch(() => {});
+    }
+    notificar('Comercio eliminado', `Se quitó ${c.nombre}.`);
+  };
+
+  const eliminarProducto = async (p) => {
+    setProductos((prev) => prev.filter((item) => item.id !== p.id));
+    setBorrarProdId(null);
+
+    const localesProd = JSON.parse(localStorage.getItem('mn_productos_local') || '[]');
+    localStorage.setItem(
+      'mn_productos_local',
+      JSON.stringify(localesProd.filter((item) => item.id !== p.id))
+    );
+
+    if (p.esReal) {
+      sbFetch(`productos?id=eq.${p.id}`, { method: 'DELETE' }, usuario?.accessToken).catch(() => {});
+    }
+    notificar('Publicación eliminada', `Se borró "${p.nombre}".`);
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="bg-white border border-neutral-200 rounded-md p-5 text-center space-y-3">
+        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded">
+          <ShieldCheck className="w-4 h-4" /> Panel Administrador
+        </span>
+        <h1 className="text-xl font-bold text-neutral-900 text-center">
+          Gestión de Comercios y Publicaciones
+        </h1>
+        <p className="text-xs text-neutral-500 text-center">
+          Aprobá solicitudes, destacá locales y moderá el catálogo de San Nicolás
+        </p>
+        <div className="flex justify-center gap-2">
+          <button
+            type="button"
+            onClick={recargar}
+            className="bg-neutral-100 hover:bg-neutral-200 text-xs font-semibold px-3 py-2 rounded inline-flex items-center gap-1 cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
+            <span>Actualizar datos</span>
+          </button>
+          <button
+            type="button"
+            onClick={salir}
+            className="border border-neutral-300 hover:bg-neutral-50 text-xs font-semibold px-3 py-2 rounded inline-flex items-center gap-1 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white border border-neutral-200 rounded-md p-5 space-y-3">
+        <h2 className="font-bold text-base text-center">Comercios ({comercios.length})</h2>
+        {comercios.length === 0 ? (
+          <p className="text-sm text-neutral-500 text-center">No hay comercios cargados.</p>
+        ) : (
+          comercios.map((c) => (
+            <div
+              key={c.id}
+              className="border border-neutral-200 rounded p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div>
+                <p className="font-bold text-sm text-neutral-900">
+                  {c.nombre}{' '}
+                  <span className="text-xs font-normal text-orange-700">({c.estado})</span>
+                  {c.destacado && (
+                    <span className="ml-2 text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">
+                      Destacado
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-neutral-500">
+                  {c.direccion} • {c.zona}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {c.estado !== 'aprobado' && (
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstado(c, 'aprobado')}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Aprobar
+                  </button>
+                )}
+                {c.estado === 'pendiente' && (
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstado(c, 'rechazado')}
+                    className="border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold px-3 py-1.5 rounded inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Rechazar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => alternarDestacado(c)}
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Star className="w-3.5 h-3.5" /> {c.destacado ? 'Quitar destaque' : 'Destacar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => verComercio(c.id)}
+                  className="bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold px-3 py-1.5 rounded cursor-pointer"
+                >
+                  Ver ficha
+                </button>
+                {borrarComId === c.id ? (
+                  <button
+                    type="button"
+                    onClick={() => eliminarComercio(c)}
+                    className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer"
+                  >
+                    Confirmar eliminar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setBorrarComId(c.id)}
+                    className="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold px-3 py-1.5 rounded inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="bg-white border border-neutral-200 rounded-md p-5 space-y-3">
+        <h2 className="font-bold text-base text-center">Publicaciones ({productos.length})</h2>
+        {productos.length === 0 ? (
+          <p className="text-sm text-neutral-500 text-center">No hay publicaciones cargadas.</p>
+        ) : (
+          productos.map((p) => (
+            <div
+              key={p.id}
+              className="py-2.5 border-b border-neutral-100 flex items-center justify-between gap-3"
+            >
+              <div>
+                <p className="text-sm font-semibold">{p.nombre}</p>
+                <p className="text-xs font-bold text-orange-600">{fmtPrecio(p.precio)}</p>
+              </div>
+              {borrarProdId === p.id ? (
+                <button
+                  type="button"
+                  onClick={() => eliminarProducto(p)}
+                  className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer"
+                >
+                  Confirmar borrar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setBorrarProdId(p.id)}
+                  className="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold px-3 py-1.5 rounded inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Borrar
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 4. COMPONENTE PRINCIPAL DE LA APLICACIÓN
+// ============================================================================
+
+export default function App() {
+  const [vista, setVista] = useState('inicio');
+  const [destinoLogin, setDestinoLogin] = useState('panel_comerciante');
+  const [usuario, setUsuario] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const [comercios, setComercios] = useState(() => {
+    try {
+      const locales = JSON.parse(localStorage.getItem('mn_comercios_local') || '[]');
+      return locales.length > 0 ? locales : COMERCIOS_DEMO;
+    } catch {
+      return COMERCIOS_DEMO;
+    }
+  });
+
+  const [productos, setProductos] = useState(() => {
+    try {
+      const locales = JSON.parse(localStorage.getItem('mn_productos_local') || '[]');
+      return locales.length > 0 ? locales : PRODUCTOS_DEMO;
+    } catch {
+      return PRODUCTOS_DEMO;
+    }
+  });
+
+  const [bdOnline, setBdOnline] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [categoria, setCategoria] = useState('todas');
+  const [comIdFicha, setComIdFicha] = useState('');
+  const [ubicacion, setUbicacion] = useState(ZONAS_REFERENCIA[0]);
+  const [aviso, setAviso] = useState(null);
+
+  const notificar = (titulo, detalle) => {
+    setAviso({ titulo, detalle });
+    setTimeout(() => setAviso(null), 3500);
+  };
+
+  const cargarBD = async () => {
+    setCargando(true);
+    try {
+      const [cDb, pDb] = await Promise.all([
+        sbFetch('comercios?select=*&order=creado_en.desc'),
+        sbFetch('productos?select=*&order=creado_en.desc')
+      ]);
+
+      setBdOnline(true);
+
+      const mapeadosCom = cDb.map((c) => {
+        const cat = CATEGORIAS.find((x) => x.id === c.rubro);
+        return {
+          id: c.id,
+          nombre: c.nombre,
+          responsable: c.responsable,
+          rubro: c.rubro,
+          tipo: c.tipo || 'Ambos',
+          direccion: c.direccion,
+          zona: c.zona,
+          lat: Number(c.lat) || -33.3335,
+          lng: Number(c.lng) || -60.211,
+          whatsapp: c.whatsapp,
+          instagram: c.instagram || '',
+          descripcion: c.descripcion,
+          horarios: c.horarios || 'Lun a Sáb 9:00 a 20:00',
+          abiertoAhora: c.abierto_ahora ?? true,
+          envioDomicilio: Boolean(c.envio_domicilio),
+          destacado: Boolean(c.destacado),
+          estado: c.estado || 'pendiente',
+          emoji: cat?.icon || '🏪',
+          esReal: true
+        };
+      });
+
+      const mapeadosProd = pDb.map((p) => {
+        const cat = CATEGORIAS.find((x) => x.id === p.categoria);
+        return {
+          id: p.id,
+          comercioId: p.comercio_id,
+          nombre: p.nombre,
+          categoria: p.categoria,
+          precio: Number(p.precio),
+          precioAnterior: p.precio_anterior ? Number(p.precio_anterior) : null,
+          esOferta: Boolean(p.es_oferta),
+          disponible: p.disponible ?? true,
+          tipo: p.tipo || 'Producto',
+          descripcion: p.descripcion || '',
+          imagenUrl: p.imagen_url || null,
+          emoji: cat?.icon || '📦',
+          esReal: true
+        };
+      });
+
+      setComercios(mapeadosCom.length > 0 ? mapeadosCom : COMERCIOS_DEMO);
+      setProductos(mapeadosProd.length > 0 ? mapeadosProd : PRODUCTOS_DEMO);
+    } catch {
+      setBdOnline(false);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarBD();
+  }, []);
+
+  const irA = (v) => {
+    setVista(v);
+    setMenuOpen(false);
+    window.scrollTo?.({ top: 0, behavior: 'smooth' });
+  };
+
+  const abrirPanel = (dest) => {
+    if (usuario) irA(dest);
+    else {
+      setDestinoLogin(dest);
+      irA('acceso');
+    }
+  };
+
+  const pedirGPS = () => {
+    if (!navigator.geolocation) {
+      notificar('GPS no disponible', 'Podés elegir una zona de San Nicolás.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUbicacion({
+          nombre: 'Mi ubicación (GPS)',
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        });
+        notificar('Ubicación actualizada', 'Calculando distancias en San Nicolás.');
+      },
+      () => {
+        notificar('Permiso pendiente', 'Seleccioná una zona de referencia en el mapa.');
+      }
+    );
+  };
+
+  const comerciosAprobados = comercios
+    .filter((c) => c.estado === 'aprobado')
+    .sort((a, b) => Number(Boolean(b.destacado)) - Number(Boolean(a.destacado)));
+
+  const ficha = comercios.find((c) => c.id === comIdFicha) || comerciosAprobados[0];
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f5f5f5] text-neutral-800">
+      {aviso && (
+        <div className="fixed bottom-4 right-4 z-50 bg-neutral-900 text-white text-xs p-3.5 rounded shadow-lg border-l-4 border-orange-500 max-w-xs">
+          <p className="font-bold">{aviso.titulo}</p>
+          <p className="text-neutral-300 mt-0.5">{aviso.detalle}</p>
+        </div>
+      )}
+
+      <header className="bg-gradient-to-r from-orange-500 to-amber-500 text-white sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => irA('inicio')}
+            className="flex items-center gap-2 cursor-pointer shrink-0"
+          >
+            <span className="w-8 h-8 rounded bg-white text-orange-600 font-black flex items-center justify-center">
+              MN
+            </span>
+            <span className="font-extrabold text-base sm:text-lg">Mercado Nicoleño</span>
+          </button>
+
+          <div className="flex-1 max-w-md bg-white rounded flex items-center overflow-hidden">
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') irA('catalogo');
+              }}
+              placeholder="Buscar en San Nicolás..."
+              className="w-full px-3 py-1.5 text-xs sm:text-sm text-neutral-800 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => irA('catalogo')}
+              aria-label="Buscar"
+              className="px-2.5 py-1.5 text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-3 text-xs font-semibold shrink-0">
+            <button type="button" onClick={() => irA('cercanos')} className="hover:underline cursor-pointer">
+              Cerca de mí
+            </button>
+            <button type="button" onClick={() => irA('catalogo')} className="hover:underline cursor-pointer">
+              Catálogo
+            </button>
+            <button
+              type="button"
+              onClick={() => abrirPanel('panel_comerciante')}
+              className="hover:underline cursor-pointer"
+            >
+              Comerciante
+            </button>
+            <button
+              type="button"
+              onClick={() => abrirPanel('panel_admin')}
+              className="hover:underline cursor-pointer"
+            >
+              Admin
+            </button>
+            <span className="bg-white/20 px-2 py-0.5 rounded text-[11px]">
+              {bdOnline ? 'BD Online' : 'Simulación'}
+            </span>
+            <button
+              type="button"
+              onClick={() => irA('registro')}
+              className="bg-white text-orange-600 font-bold px-3 py-1.5 rounded hover:bg-orange-50 cursor-pointer"
+            >
+              Sumá tu local
+            </button>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Menú"
+            className="md:hidden p-2 rounded bg-white/15 cursor-pointer"
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {menuOpen && (
+          <div className="md:hidden bg-white text-neutral-800 px-4 py-3 space-y-1 text-sm font-semibold border-t">
+            <button type="button" onClick={() => irA('inicio')} className="block w-full text-left py-2">
+              Inicio
+            </button>
+            <button type="button" onClick={() => irA('cercanos')} className="block w-full text-left py-2">
+              Cerca de mí
+            </button>
+            <button type="button" onClick={() => irA('catalogo')} className="block w-full text-left py-2">
+              Catálogo
+            </button>
+            <button type="button" onClick={() => irA('registro')} className="block w-full text-left py-2">
+              Sumá tu local
+            </button>
+            <button
+              type="button"
+              onClick={() => abrirPanel('panel_comerciante')}
+              className="block w-full text-left py-2"
+            >
+              Panel Comerciante
+            </button>
+            <button
+              type="button"
+              onClick={() => abrirPanel('panel_admin')}
+              className="block w-full text-left py-2"
+            >
+              Panel Admin
+            </button>
+          </div>
+        )}
+      </header>
+
+      <main className="flex-1">
+        {vista === 'inicio' && (
+          <div className="space-y-8 pb-10">
+            <section className="bg-gradient-to-r from-orange-600 to-amber-500 text-white py-10 px-4 text-center space-y-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-center">
+                San Nicolás de los Arroyos
+              </p>
+              <h1 className="text-2xl sm:text-4xl font-bold text-center">
+                Comercios y ofertas de San Nicolás
+              </h1>
+              <p className="text-xs sm:text-sm text-white/90 max-w-xl mx-auto text-center">
+                Descubrí negocios locales, consultá precios y contactá directo por WhatsApp.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => irA('cercanos')}
+                  className="bg-white text-orange-600 font-semibold px-4 py-2 rounded text-sm inline-flex items-center gap-1.5 hover:bg-orange-50 cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4" /> Mapa y cercanía
+                </button>
+                <button
+                  type="button"
+                  onClick={() => irA('registro')}
+                  className="bg-orange-950/30 border border-white/40 text-white font-semibold px-4 py-2 rounded text-sm inline-flex items-center gap-1.5 hover:bg-orange-950/45 cursor-pointer"
+                >
+                  <Store className="w-4 h-4" /> Sumá tu local
+                </button>
+              </div>
+            </section>
+
+            <section className="max-w-7xl mx-auto px-4 space-y-3">
+              <div className="text-center space-y-1">
+                <h2 className="text-lg font-bold text-center text-neutral-900">Categorías</h2>
+                <p className="text-xs text-neutral-500 text-center">
+                  Elegí un rubro para ver productos y servicios disponibles
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+                {CATEGORIAS.map((cat) => (
+                  <button
+                    type="button"
+                    key={cat.id}
+                    onClick={() => {
+                      setCategoria(cat.id);
+                      irA('catalogo');
+                    }}
+                    className="bg-white border border-neutral-200 hover:border-orange-400 rounded p-3 text-center flex flex-col items-center gap-1.5 cursor-pointer transition"
+                  >
+                    <span className="text-2xl">{cat.icon}</span>
+                    <span className="text-xs font-semibold leading-tight text-center">{cat.nombre}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="max-w-7xl mx-auto px-4 space-y-3">
+              <div className="text-center space-y-1">
+                <h2 className="text-lg font-bold text-center text-neutral-900">Comercios</h2>
+                <p className="text-xs text-neutral-500 text-center">
+                  Locales y emprendimientos adheridos en San Nicolás
+                </p>
+              </div>
+              {comerciosAprobados.length === 0 ? (
+                <div className="bg-white border border-neutral-200 rounded p-6 text-center text-sm text-neutral-500">
+                  Todavía no hay comercios aprobados.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {comerciosAprobados.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        setComIdFicha(c.id);
+                        irA('ficha');
+                      }}
+                      className="bg-white border border-neutral-200 hover:border-orange-400 rounded p-4 cursor-pointer space-y-1.5 text-center transition"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-2xl">{c.emoji}</span>
+                        {c.destacado && (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded uppercase">
+                            Destacado
+                          </span>
+                        )}
+                        <span className="text-xs font-bold text-orange-600">
+                          {fmtDist(calcKm(ubicacion.lat, ubicacion.lng, c.lat, c.lng))}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-neutral-900 text-center">{c.nombre}</h3>
+                      <p className="text-xs text-neutral-500 text-center">
+                        {c.direccion} • {c.zona}
+                      </p>
+                      <p className="text-xs text-neutral-600 line-clamp-2 text-center">{c.descripcion}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {vista === 'cercanos' && (
+          <VistaCercanos
+            comerciosPublicos={comerciosAprobados}
+            ubicacion={ubicacion}
+            pedirGPS={pedirGPS}
+            elegirZona={setUbicacion}
+            verComercio={(id) => {
+              setComIdFicha(id);
+              irA('ficha');
+            }}
+          />
+        )}
+
+        {vista === 'catalogo' && (
+          <VistaCatalogo
+            productos={productos}
+            comercios={comercios}
+            categoria={categoria}
+            setCategoria={setCategoria}
+            busqueda={busqueda}
+            setBusqueda={setBusqueda}
+            verComercio={(id) => {
+              setComIdFicha(id);
+              irA('ficha');
+            }}
+          />
+        )}
+
+        {vista === 'registro' && (
+          <VistaRegistro setComercios={setComercios} irA={irA} notificar={notificar} />
+        )}
+
+        {vista === 'acceso' && (
+          <VistaAcceso
+            destino={destinoLogin}
+            onLogin={(u) => {
+              setUsuario(u);
+              irA(destinoLogin);
+            }}
+            cancelar={() => irA('inicio')}
+          />
+        )}
+
+        {vista === 'panel_comerciante' && (
+          <VistaComerciante
+            comercios={comercios}
+            productos={productos}
+            setProductos={setProductos}
+            usuario={usuario}
+            salir={() => {
+              setUsuario(null);
+              irA('inicio');
+            }}
+            verComercio={(id) => {
+              setComIdFicha(id);
+              irA('ficha');
+            }}
+            notificar={notificar}
+          />
+        )}
+
+        {vista === 'panel_admin' && (
+          <VistaAdmin
+            comercios={comercios}
+            setComercios={setComercios}
+            productos={productos}
+            setProductos={setProductos}
+            usuario={usuario}
+            salir={() => {
+              setUsuario(null);
+              irA('inicio');
+            }}
+            recargar={cargarBD}
+            cargando={cargando}
+            verComercio={(id) => {
+              setComIdFicha(id);
+              irA('ficha');
+            }}
+            notificar={notificar}
+          />
+        )}
+
+        {vista === 'ficha' && ficha && (
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+            <button
+              type="button"
+              onClick={() => irA('inicio')}
+              className="text-xs font-semibold text-neutral-600 hover:text-neutral-900 inline-flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> Volver
+            </button>
+
+            <div className="bg-white border border-neutral-200 rounded-md p-6 space-y-4 text-center">
+              <div className="space-y-1 text-center">
+                <h1 className="text-2xl font-bold text-neutral-900 text-center">
+                  {ficha.emoji} {ficha.nombre}
+                </h1>
+                <p className="text-sm text-neutral-500 flex items-center justify-center gap-1 mt-1 text-center">
+                  <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
+                  <span>
+                    {ficha.direccion} • {ficha.zona}, San Nicolás
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <a
+                  href={waUrl(
+                    ficha.whatsapp,
+                    `Hola ${ficha.nombre}, te escribo desde Mercado Nicoleño.`
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded text-sm inline-flex items-center gap-1.5"
+                >
+                  <Phone className="w-4 h-4" /> Contactar por WhatsApp
+                </a>
+              </div>
+
+              <p className="text-sm text-neutral-700 text-center max-w-2xl mx-auto">
+                {ficha.descripcion}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
+                <div className="bg-neutral-50 p-3 rounded border flex items-center justify-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-500 shrink-0" />
+                  <span>{ficha.horarios}</span>
+                </div>
+                <div className="bg-neutral-50 p-3 rounded border flex items-center justify-center gap-2">
+                  <Truck className="w-4 h-4 text-orange-500 shrink-0" />
+                  <span>
+                    {ficha.envioDomicilio
+                      ? 'Envío a domicilio disponible'
+                      : 'Retiro en el local'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-neutral-900 text-center">
+                Productos y servicios publicados
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {productos
+                  .filter((p) => p.comercioId === ficha.id && p.disponible)
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="bg-white border border-neutral-200 rounded p-4 flex flex-col justify-between text-center"
+                    >
+                      <div>
+                        {p.imagenUrl && (
+                          <img
+                            src={p.imagenUrl}
+                            alt={p.nombre}
+                            className="w-full h-32 object-cover rounded mb-2"
+                          />
+                        )}
+                        <h3 className="font-bold text-sm text-center">{p.nombre}</h3>
+                        {p.descripcion && (
+                          <p className="text-xs text-neutral-500 mt-1 text-center">{p.descripcion}</p>
+                        )}
+                      </div>
+                      <div className="mt-3 pt-2 border-t flex items-center justify-between">
+                        <span className="font-bold text-orange-600">{fmtPrecio(p.precio)}</span>
+                        <a
+                          href={waUrl(
+                            ficha.whatsapp,
+                            `Hola ${ficha.nombre}, consulto por "${p.nombre}".`
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded"
+                        >
+                          Pedir
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <footer className="bg-white border-t border-neutral-200 py-4 px-4 text-center text-xs text-neutral-500">
+        Mercado Nicoleño • San Nicolás de los Arroyos
+      </footer>
+    </div>
+  );
+}
