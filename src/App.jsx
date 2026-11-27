@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Search, MapPin, Store, Tag, Phone, Clock, Truck, CheckCircle,
@@ -16,7 +15,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_w601K0oEr5Eg-V8Jg2XAnQ_g_lAUCdn';
 
 async function supabaseFetch(endpoint, options = {}, accessToken = null) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
@@ -49,7 +48,7 @@ async function supabaseFetch(endpoint, options = {}, accessToken = null) {
 
 async function supabaseAuthRequest(path, body) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
       method: 'POST',
@@ -486,4 +485,4 @@ function VistaCatalogo({
 
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-neutral-100">
           <button
-            typ
+            t
