@@ -15,7 +15,7 @@ const SUPABASE_ANON_KEY = 'sb_secret_db8HViN18VnV3e2yuRbS-A_CxYZFOTk';
 
 async function supabaseFetch(endpoint, options = {}, accessToken = null) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
