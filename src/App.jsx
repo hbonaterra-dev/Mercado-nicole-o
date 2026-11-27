@@ -484,7 +484,7 @@ function VistaCatalogo({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-neutral-100">
-                      <button
+                               <button
               type="button"
               onClick={() => {
                 setCategoriaFiltro('todas');
@@ -580,4 +580,3 @@ function VistaCatalogo({
     </div>
   );
 }
-
