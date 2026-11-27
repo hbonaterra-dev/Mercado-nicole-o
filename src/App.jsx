@@ -249,7 +249,7 @@ function VistaCercanos({
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           <button
             type="button"
             onClick={() => setFiltroAbiertoCercanos(!filtroAbiertoCercanos)}
@@ -342,7 +342,7 @@ function VistaCercanos({
               );
             })}
           </div>
-          <p className="text-[11px] text-neutral-500 mt-2">
+          <p className="text-[11px] text-neutral-500 mt-2 text-center">
             Tocá cualquier ícono de comercio en el mapa para abrir su ficha completa.
           </p>
         </div>
@@ -486,5 +486,4 @@ function VistaCatalogo({
 
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-neutral-100">
           <button
-            type="button"
-            onCl
+            typ
