@@ -1,0 +1,2414 @@
+import React, { useState, useEffect } from 'react';
+
+const COMERCIOS_INICIALES = [];
+const ADMIN_EMAIL_UNICO = 'hbonaterra@gmail.com';
+const ADMIN_PASSWORD_UNICA = 'renoleta';
+const COMERCIANTES_CUENTAS_KEY = 'mn_comerciantes_cuentas_unicas_v1';
+const COMERCIOS_PUBLICADOS_KEY = 'mn_comercios_publicados_v1';
+
+const leerComerciosGuardados = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COMERCIOS_PUBLICADOS_KEY) || 'null');
+    if (Array.isArray(raw)) return raw;
+    return COMERCIOS_INICIALES;
+  } catch {
+    return COMERCIOS_INICIALES;
+  }
+};
+
+const guardarComerciosEnStorage = (listaComercios) => {
+  try {
+    localStorage.setItem(COMERCIOS_PUBLICADOS_KEY, JSON.stringify(listaComercios));
+  } catch {
+    // Si una foto subida es muy pesada para localStorage, evitamos romper la app
+  }
+};
+
+const DOMINIOS_CORREO_FALSO = [
+  'example.com',
+  'ejemplo.com',
+  'test.com',
+  'prueba.com',
+  'mailinator.com',
+  'tempmail.com',
+  'yopmail.com',
+  '10minutemail.com',
+  'guerrillamail.com',
+  'fake.com'
+];
+
+const esCorreoRealValido = (correo) => {
+  const limpio = (correo || '').trim().toLowerCase();
+  const match = limpio.match(/^[^\s@]+@([^\s@]+\.[^\s@]{2,})$/);
+  if (!match) return false;
+  const dominio = match[1];
+  if (DOMINIOS_CORREO_FALSO.includes(dominio)) return false;
+  return true;
+};
+
+const leerCuentasComerciantes = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COMERCIANTES_CUENTAS_KEY) || '{}');
+    const normalizadas = {};
+    Object.entries(raw).forEach(([correo, val]) => {
+      if (typeof val === 'string') {
+        normalizadas[correo] = {
+          password: val,
+          aprobado: true,
+          creadoEn: new Date().toISOString()
+        };
+      } else if (val && typeof val === 'object') {
+        normalizadas[correo] = {
+          password: val.password || '',
+          aprobado: Boolean(val.aprobado),
+          creadoEn: val.creadoEn || new Date().toISOString()
+        };
+      }
+    });
+    return normalizadas;
+  } catch {
+    return {};
+  }
+};
+
+const guardarCuentasComerciantes = (cuentas) => {
+  localStorage.setItem(COMERCIANTES_CUENTAS_KEY, JSON.stringify(cuentas));
+};
+
+const CATEGORIAS_CON_IMAGEN = [
+  {
+    nombre: 'Carnicería y Verdulería',
+    imagen: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Panadería',
+    imagen: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Rotisería',
+    imagen: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Indumentaria y Calzado',
+    imagen: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Ferretería',
+    imagen: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Oficios y Servicios',
+    imagen: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Veterinaria y Mascotas',
+    imagen: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Hogar, Bazar y Deco',
+    imagen: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Electrónica y Celulares',
+    imagen: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=80'
+  },
+  {
+    nombre: 'Farmacia de Turno',
+    soloTurno: true,
+    imagen: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=700&q=80'
+  }
+];
+
+const TURNOS_FARMACIAS_SN = [
+  {
+    letra: 'A',
+    farmacias: [
+      { nombre: 'Farmacia Alberdi', direccion: 'Alberdi 210' },
+      { nombre: 'Farmacia Central', direccion: 'Bartolomé Mitre 195' },
+      { nombre: 'Farmacia Del Acuerdo', direccion: 'Av. Savio 640' }
+    ]
+  },
+  {
+    letra: 'B',
+    farmacias: [
+      { nombre: 'Farmacia Belgrano', direccion: 'Belgrano 450' },
+      { nombre: 'Farmacia Italia', direccion: 'Italia 312' },
+      { nombre: 'Farmacia Somisa', direccion: 'Av. Central 1820' }
+    ]
+  },
+  {
+    letra: 'C',
+    farmacias: [
+      { nombre: 'Farmacia Colón', direccion: 'Colón 185' },
+      { nombre: 'Farmacia De La Nación', direccion: 'Nación 380' },
+      { nombre: 'Farmacia San Cayetano', direccion: 'Av. Falcón 520' }
+    ]
+  },
+  {
+    letra: 'D',
+    farmacias: [
+      { nombre: 'Farmacia Don Bosco', direccion: 'Don Bosco 415' },
+      { nombre: 'Farmacia Rivadavia', direccion: 'Rivadavia 290' },
+      { nombre: 'Farmacia Santa Teresita', direccion: 'Av. Álvarez 710' }
+    ]
+  },
+  {
+    letra: 'E',
+    farmacias: [
+      { nombre: 'Farmacia El Norte', direccion: 'Pellegrini 330' },
+      { nombre: 'Farmacia Moreno', direccion: 'Av. Moreno 465' },
+      { nombre: 'Farmacia San Martín', direccion: 'San Martín 120' }
+    ]
+  },
+  {
+    letra: 'F',
+    farmacias: [
+      { nombre: 'Farmacia Cantondebat', direccion: 'Brown 598' },
+      { nombre: 'Farmacia Cavara', direccion: 'Necochea 148' },
+      { nombre: 'Farmacia Fénix', direccion: 'Garibaldi 281' },
+      { nombre: 'Farmacia Frattini', direccion: 'Av. Moreno 108' },
+      { nombre: 'Farmacia Prat', direccion: 'Juan Domingo Perón 1093' },
+      { nombre: 'Farmacia Zonta', direccion: 'Urquiza 422' }
+    ]
+  },
+  {
+    letra: 'G',
+    farmacias: [
+      { nombre: 'Farmacia Conde', direccion: 'Nación 701' },
+      { nombre: 'Farmacia Garaguso', direccion: 'Belgrano 320' },
+      { nombre: 'Farmacia Prina', direccion: 'Av. Illia 739' }
+    ]
+  },
+  {
+    letra: 'H',
+    farmacias: [
+      { nombre: 'Farmacia Garibaldi', direccion: 'Garibaldi 540' },
+      { nombre: 'Farmacia Mitre', direccion: 'Bartolomé Mitre 480' },
+      { nombre: 'Farmacia Oeste', direccion: 'Av. Alberdi 890' }
+    ]
+  },
+  {
+    letra: 'I',
+    farmacias: [
+      { nombre: 'Farmacia Lavalle', direccion: 'Lavalle 260' },
+      { nombre: 'Farmacia Sarmiento', direccion: 'Sarmiento 310' },
+      { nombre: 'Farmacia Sur', direccion: 'Av. Savio 1420' }
+    ]
+  },
+  {
+    letra: 'J',
+    farmacias: [
+      { nombre: 'Farmacia Ameghino', direccion: 'Ameghino 375' },
+      { nombre: 'Farmacia Pellegrini', direccion: 'Pellegrini 610' },
+      { nombre: 'Farmacia 9 de Julio', direccion: '9 de Julio 240' }
+    ]
+  }
+];
+
+const construirUrlMapaSN = (direccion, nombreLugar) => {
+  const dirLimpia = (direccion || '').trim();
+  const nombreLimpio = (nombreLugar || '').trim();
+  if (!dirLimpia && !nombreLimpio) {
+    return 'https://maps.google.com/maps?q=San+Nicol%C3%A1s+de+los+Arroyos,+Buenos+Aires,+Argentina&t=m&z=14&output=embed';
+  }
+  const base = dirLimpia || nombreLimpio;
+  const conCiudad = /san nicol[aá]s/i.test(base)
+    ? `${base}, Buenos Aires, Argentina`
+    : `${base}, San Nicolás de los Arroyos, Buenos Aires, Argentina`;
+  const consulta =
+    nombreLimpio && !conCiudad.toLowerCase().includes(nombreLimpio.toLowerCase())
+      ? `${nombreLimpio}, ${conCiudad}`
+      : conCiudad;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(consulta)}&t=m&z=17&output=embed`;
+};
+
+const formatearPrecioARS = (valor) => {
+  const limpio = String(valor || '').trim();
+  if (!limpio) return '';
+  const numero = Number(limpio.replace(/[^0-9.,]/g, '').replace(',', '.'));
+  if (!Number.isNaN(numero) && numero > 0) {
+    return `$${numero.toLocaleString('es-AR')}`;
+  }
+  return limpio.startsWith('$') ? limpio : `$${limpio}`;
+};
+
+const DIAS_SEMANA_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+const formatearFechaCortaSN = (fecha) => {
+  const diaNombre = DIAS_SEMANA_ES[fecha.getDay()];
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  return `${diaNombre} ${dd}/${mm}`;
+};
+
+const obtenerTurnosFarmaciasHoy = (ahora = new Date()) => {
+  const minutosDelDia = ahora.getHours() * 60 + ahora.getMinutes();
+  const antesDe0830 = minutosDelDia < 8 * 60 + 30;
+
+  const inicioJornadaTurno = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  if (antesDe0830) {
+    inicioJornadaTurno.setDate(inicioJornadaTurno.getDate() - 1);
+  }
+  const finJornadaTurno = new Date(inicioJornadaTurno);
+  finJornadaTurno.setDate(finJornadaTurno.getDate() + 1);
+  const finSiguienteTurno = new Date(finJornadaTurno);
+  finSiguienteTurno.setDate(finSiguienteTurno.getDate() + 1);
+
+  const fechaAncla = new Date(2026, 10, 28); // 28/11/2026 -> Turno G (índice 6)
+  const diffDias = Math.round((inicioJornadaTurno - fechaAncla) / (1000 * 60 * 60 * 24));
+  const total = TURNOS_FARMACIAS_SN.length;
+  const indiceVigente = (((6 + diffDias) % total) + total) % total;
+  const indiceSiguiente = (indiceVigente + 1) % total;
+
+  const turnoVigente = TURNOS_FARMACIAS_SN[indiceVigente];
+  const turnoSiguiente = TURNOS_FARMACIAS_SN[indiceSiguiente];
+
+  return {
+    vigente: {
+      etiqueta: `Turno ${turnoVigente.letra} · De guardia ahora (hasta ${formatearFechaCortaSN(finJornadaTurno)} a las 08:30 hs)`,
+      farmacias: turnoVigente.farmacias
+    },
+    siguiente: {
+      etiqueta: `Turno ${turnoSiguiente.letra} · Próxima guardia (${formatearFechaCortaSN(finJornadaTurno)} 08:30 hs a ${formatearFechaCortaSN(finSiguienteTurno)} 08:30 hs)`,
+      farmacias: turnoSiguiente.farmacias
+    }
+  };
+};
+
+// Mapea códigos meteorológicos WMO a ícono y descripción en español (solo °C)
+const describirClimaWmoCelsius = (codigo) => {
+  if (codigo === 0) return { icono: '☀️', estado: 'Soleado' };
+  if (codigo === 1 || codigo === 2) return { icono: '🌤️', estado: 'Algo nublado' };
+  if (codigo === 3) return { icono: '☁️', estado: 'Nublado' };
+  if (codigo === 45 || codigo === 48) return { icono: '🌫️', estado: 'Neblina' };
+  if ((codigo >= 51 && codigo <= 67) || (codigo >= 80 && codigo <= 82)) {
+    return { icono: '🌧️', estado: 'Lluvia' };
+  }
+  if (codigo >= 95) return { icono: '⛈️', estado: 'Tormenta' };
+  return { icono: '🌡️', estado: 'Despejado' };
+};
+
+// Respaldo diario/horario en grados Celsius para San Nicolás de los Arroyos (-33.3335, -60.211)
+const obtenerClimaRespaldoCelsiusSN = (fecha = new Date()) => {
+  const mmdd = `${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+  const pronosticoDiario = {
+    '11-28': { min: 17, max: 33, mat: 21, tar: 33, noc: 25, icono: '☀️', estado: 'Soleado' },
+    '11-29': { min: 18, max: 33, mat: 23, tar: 33, noc: 25, icono: '☁️', estado: 'Nublado' },
+    '11-30': { min: 19, max: 35, mat: 24, tar: 35, noc: 26, icono: '☀️', estado: 'Soleado' },
+    '12-01': { min: 22, max: 27, mat: 23, tar: 27, noc: 22, icono: '🌧️', estado: 'Lluvia' },
+    '12-02': { min: 17, max: 24, mat: 19, tar: 24, noc: 18, icono: '☁️', estado: 'Nublado' },
+    '12-03': { min: 12, max: 25, mat: 17, tar: 25, noc: 17, icono: '🌤️', estado: 'Algo nublado' },
+    '12-04': { min: 15, max: 28, mat: 20, tar: 28, noc: 21, icono: '🌤️', estado: 'Algo nublado' }
+  };
+  const base = pronosticoDiario[mmdd] || {
+    min: 18,
+    max: 30,
+    mat: 22,
+    tar: 30,
+    noc: 23,
+    icono: '☀️',
+    estado: 'Soleado'
+  };
+  const hora = fecha.getHours();
+  const tempC = hora < 11 ? base.mat : hora < 19 ? base.tar : base.noc;
+  return {
+    temperaturaC: tempC,
+    icono: base.icono,
+    estado: base.estado
+  };
+};
+
+function App() {
+  const [mostrarSplash, setMostrarSplash] = useState(true);
+  const [faseSplash, setFaseSplash] = useState('entrada');
+
+  const [busqueda, setBusqueda] = useState('');
+  const [rubroSeleccionado, setRubroSeleccionado] = useState('Todos');
+  const [comercios, setComercios] = useState(() => leerComerciosGuardados());
+  const [comercioActivoMapa, setComercioActivoMapa] = useState(null);
+  const [comercioSeleccionadoDetalle, setComercioSeleccionadoDetalle] = useState(null);
+  const [mensajeEstado, setMensajeEstado] = useState('');
+  const [mostrarSumarLocal, setMostrarSumarLocal] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [panelActivo, setPanelActivo] = useState(null);
+  const [desplazamientoFondo, setDesplazamientoFondo] = useState({ y: 0, x: 0 });
+
+  const [cuentasComerciantes, setCuentasComerciantes] = useState(() => leerCuentasComerciantes());
+  const [modoRegistroComerciante, setModoRegistroComerciante] = useState(false);
+  const [emailComerciante, setEmailComerciante] = useState('');
+  const [passwordComerciante, setPasswordComerciante] = useState('');
+  const [nuevaPasswordComerciante, setNuevaPasswordComerciante] = useState('');
+  const [mostrarPasswordComerciante, setMostrarPasswordComerciante] = useState(false);
+  const [modoRecuperarComerciante, setModoRecuperarComerciante] = useState(false);
+  const [mensajeAuthComerciante, setMensajeAuthComerciante] = useState('');
+  const [errorAuthComerciante, setErrorAuthComerciante] = useState('');
+  const [intentosFallidosComerciante, setIntentosFallidosComerciante] = useState(0);
+  const [comercianteAutenticado, setComercianteAutenticado] = useState('');
+
+  const [emailAdmin, setEmailAdmin] = useState('');
+  const [passwordAdmin, setPasswordAdmin] = useState('');
+  const [mostrarPasswordAdmin, setMostrarPasswordAdmin] = useState(false);
+  const [modoRecuperarAdmin, setModoRecuperarAdmin] = useState(false);
+  const [mensajeAuthAdmin, setMensajeAuthAdmin] = useState('');
+  const [errorAuthAdmin, setErrorAuthAdmin] = useState('');
+  const [adminAutenticado, setAdminAutenticado] = useState(false);
+  const [ahoraReloj, setAhoraReloj] = useState(() => new Date());
+  const [climaSN, setClimaSN] = useState(() => obtenerClimaRespaldoCelsiusSN(new Date()));
+
+  const [nuevoLocal, setNuevoLocal] = useState({
+    nombre: '',
+    rubro: CATEGORIAS_CON_IMAGEN[0].nombre,
+    direccion: '',
+    descripcion: '',
+    promo: 'Consulta por WhatsApp',
+    whatsapp: '5493364000199',
+    localImagen: '',
+    localArchivoNombre: '',
+    productoNombre: '',
+    productoPrecio: '',
+    productoImagen: '',
+    productoArchivoNombre: ''
+  });
+  const [nuevoProductoPorComercio, setNuevoProductoPorComercio] = useState({});
+  const [edicionesProducto, setEdicionesProducto] = useState({});
+
+  useEffect(() => {
+    guardarComerciosEnStorage(comercios);
+  }, [comercios]);
+
+  useEffect(() => {
+    if (!mostrarSplash) return;
+    const tFusion = setTimeout(() => setFaseSplash('fusion'), 650);
+    const tSalida = setTimeout(() => setFaseSplash('salida'), 1250);
+    const tFin = setTimeout(() => setMostrarSplash(false), 1750);
+    return () => {
+      clearTimeout(tFusion);
+      clearTimeout(tSalida);
+      clearTimeout(tFin);
+    };
+  }, [mostrarSplash]);
+
+  useEffect(() => {
+    const manejarScroll = () => {
+      const y = window.scrollY || window.pageYOffset || 0;
+      const x = Math.sin(y * 0.004) * 14;
+      setDesplazamientoFondo({ y: y * 0.22, x });
+    };
+
+    manejarScroll();
+    window.addEventListener('scroll', manejarScroll, { passive: true });
+    return () => window.removeEventListener('scroll', manejarScroll);
+  }, []);
+
+  const abrirSumarLocal = () => {
+    setMenuAbierto(false);
+    if (!comercianteAutenticado) {
+      setMostrarSumarLocal(false);
+      setCuentasComerciantes(leerCuentasComerciantes());
+      setPanelActivo('comerciante');
+      setErrorAuthComerciante(
+        'Para sumar tu local primero iniciá sesión con tu cuenta de comerciante aprobada (o creala y esperá la aprobación del administrador).'
+      );
+      return;
+    }
+    setPanelActivo(null);
+    setMostrarSumarLocal((prev) => !prev);
+  };
+
+  const irA = (destino) => {
+    setMenuAbierto(false);
+    setPanelActivo(null);
+    setMostrarSumarLocal(false);
+    if (destino === 'inicio') {
+      setRubroSeleccionado('Todos');
+      setBusqueda('');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const comerciosFiltrados = comercios.filter((item) => {
+    const coincideRubro = rubroSeleccionado === 'Todos' || item.rubro === rubroSeleccionado;
+    const texto = `${item.nombre} ${item.rubro} ${item.direccion} ${item.descripcion}`.toLowerCase();
+    const coincideTexto = !busqueda.trim() || texto.includes(busqueda.trim().toLowerCase());
+    return coincideRubro && coincideTexto;
+  });
+
+  const irAMapaYCercania = () => {
+    const seccionMapa = document.getElementById('seccion-mapa-san-nicolas');
+    if (seccionMapa) {
+      seccionMapa.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const agregarLocalRapido = (e) => {
+    e.preventDefault();
+    const nombreLimpio = nuevoLocal.nombre.trim();
+    const direccionLimpia = nuevoLocal.direccion.trim();
+    if (!nombreLimpio || !direccionLimpia) {
+      setMensajeEstado('Completá el nombre del local y su dirección en San Nicolás.');
+      return;
+    }
+
+    const categoriaFoto =
+      CATEGORIAS_CON_IMAGEN.find((c) => c.nombre === nuevoLocal.rubro)?.imagen ||
+      CATEGORIAS_CON_IMAGEN[0].imagen;
+    const fotoLocalFinal = nuevoLocal.localImagen || categoriaFoto;
+
+    const productosIniciales = [];
+    const prodNombre = nuevoLocal.productoNombre.trim();
+    const prodPrecioFormateado = formatearPrecioARS(nuevoLocal.productoPrecio);
+    const prodFoto = nuevoLocal.productoImagen || '';
+
+    if (prodNombre || prodPrecioFormateado || nuevoLocal.productoImagen) {
+      productosIniciales.push({
+        id: `${Date.now()}-prod-1`,
+        nombre: prodNombre || 'Producto destacado',
+        precio: prodPrecioFormateado || 'Consultar precio',
+        imagen: prodFoto
+      });
+    }
+
+    const creado = {
+      id: String(Date.now()),
+      nombre: nombreLimpio,
+      rubro: nuevoLocal.rubro,
+      direccion: direccionLimpia,
+      descripcion:
+        nuevoLocal.descripcion.trim() || 'Comercio local de San Nicolás de los Arroyos.',
+      promo: nuevoLocal.promo.trim() || 'Consulta por WhatsApp',
+      whatsapp: nuevoLocal.whatsapp.trim() || '5493364000199',
+      imagen: fotoLocalFinal,
+      productos: productosIniciales,
+      propietarioEmail: comercianteAutenticado || ''
+    };
+
+    setComercios((prev) => [creado, ...prev]);
+    setComercioActivoMapa(creado);
+    setComercioSeleccionadoDetalle(creado);
+    setMostrarSumarLocal(false);
+    setNuevoLocal({
+      nombre: '',
+      rubro: CATEGORIAS_CON_IMAGEN[0].nombre,
+      direccion: '',
+      descripcion: '',
+      promo: 'Consulta por WhatsApp',
+      whatsapp: '5493364000199',
+      localImagen: '',
+      localArchivoNombre: '',
+      productoNombre: '',
+      productoPrecio: '',
+      productoImagen: '',
+      productoArchivoNombre: ''
+    });
+    setMensajeEstado(`Local agregado y ubicado en el mapa: ${creado.direccion}`);
+  };
+
+  const manejarArchivoFotoLocal = (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      if (typeof lector.result === 'string') {
+        setNuevoLocal((prev) => ({
+          ...prev,
+          localImagen: lector.result,
+          localArchivoNombre: archivo.name
+        }));
+      }
+    };
+    lector.readAsDataURL(archivo);
+  };
+
+  const manejarArchivoProductoNuevoLocal = (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      if (typeof lector.result === 'string') {
+        setNuevoLocal((prev) => ({
+          ...prev,
+          productoImagen: lector.result,
+          productoArchivoNombre: archivo.name
+        }));
+      }
+    };
+    lector.readAsDataURL(archivo);
+  };
+
+  const agregarProductoAComercio = (comercioId, e) => {
+    e.preventDefault();
+    const borrador = nuevoProductoPorComercio[comercioId] || {
+      nombre: '',
+      precio: '',
+      imagen: '',
+      archivoNombre: ''
+    };
+    const nombreProd = borrador.nombre.trim();
+    const precioFormateado = formatearPrecioARS(borrador.precio);
+    if (!nombreProd || !precioFormateado) {
+      setMensajeEstado('Completá el nombre y el precio del producto para publicarlo.');
+      return;
+    }
+
+    setComercios((prev) =>
+      prev.map((item) => {
+        if (item.id !== comercioId) return item;
+        const fotoProd = borrador.imagen || '';
+        const nuevoProd = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          nombre: nombreProd,
+          precio: precioFormateado,
+          imagen: fotoProd
+        };
+        const listaActualizada = [...(item.productos || []), nuevoProd];
+        const actualizado = {
+          ...item,
+          productos: listaActualizada
+        };
+        if (comercioSeleccionadoDetalle?.id === comercioId) {
+          setComercioSeleccionadoDetalle(actualizado);
+        }
+        return actualizado;
+      })
+    );
+
+    setNuevoProductoPorComercio((prev) => ({
+      ...prev,
+      [comercioId]: { nombre: '', precio: '', imagen: '', archivoNombre: '' }
+    }));
+    setMensajeEstado(`Producto "${nombreProd}" (${precioFormateado}) agregado a la publicación.`);
+  };
+
+  const quitarProductoDeComercio = (comercioId, productoId) => {
+    setComercios((prev) =>
+      prev.map((item) => {
+        if (item.id !== comercioId) return item;
+        const restantes = (item.productos || []).filter((p) => p.id !== productoId);
+        const actualizado = {
+          ...item,
+          productos: restantes
+        };
+        if (comercioSeleccionadoDetalle?.id === comercioId) {
+          setComercioSeleccionadoDetalle(actualizado);
+        }
+        return actualizado;
+      })
+    );
+    setEdicionesProducto((prev) => {
+      const copia = { ...prev };
+      delete copia[productoId];
+      return copia;
+    });
+    setMensajeEstado('Producto borrado de la publicación.');
+  };
+
+  const obtenerBorradorEdicionProducto = (prod) => {
+    return (
+      edicionesProducto[prod.id] || {
+        nombre: prod.nombre,
+        precio: prod.precio,
+        imagen: prod.imagen,
+        archivoNombre: ''
+      }
+    );
+  };
+
+  const actualizarCampoEdicionProducto = (prod, campo, valor) => {
+    const actual = obtenerBorradorEdicionProducto(prod);
+    setEdicionesProducto((prev) => ({
+      ...prev,
+      [prod.id]: {
+        ...actual,
+        [campo]: valor
+      }
+    }));
+  };
+
+  const guardarEdicionProducto = (comercioId, prod) => {
+    const borrador = obtenerBorradorEdicionProducto(prod);
+    const nombreLimpio = (borrador.nombre || '').trim() || prod.nombre;
+    const precioFormateado = formatearPrecioARS(borrador.precio) || prod.precio;
+    const imagenLimpia = borrador.imagen || '';
+
+    setComercios((prev) =>
+      prev.map((item) => {
+        if (item.id !== comercioId) return item;
+        const productosActualizados = (item.productos || []).map((p) =>
+          p.id === prod.id
+            ? {
+                ...p,
+                nombre: nombreLimpio,
+                precio: precioFormateado,
+                imagen: imagenLimpia
+              }
+            : p
+        );
+        const actualizado = {
+          ...item,
+          productos: productosActualizados
+        };
+        if (comercioSeleccionadoDetalle?.id === comercioId) {
+          setComercioSeleccionadoDetalle(actualizado);
+        }
+        return actualizado;
+      })
+    );
+
+    setEdicionesProducto((prev) => ({
+      ...prev,
+      [prod.id]: {
+        nombre: nombreLimpio,
+        precio: precioFormateado,
+        imagen: imagenLimpia,
+        archivoNombre: ''
+      }
+    }));
+    setMensajeEstado(`Actualizado "${nombreLimpio}" (${precioFormateado}).`);
+  };
+
+  const quitarFotoEdicionProducto = (comercioId, prod) => {
+    const actual = obtenerBorradorEdicionProducto(prod);
+    const actualizadoBorrador = {
+      ...actual,
+      imagen: '',
+      archivoNombre: ''
+    };
+    setEdicionesProducto((prev) => ({
+      ...prev,
+      [prod.id]: actualizadoBorrador
+    }));
+
+    setComercios((prev) =>
+      prev.map((item) => {
+        if (item.id !== comercioId) return item;
+        const productosActualizados = (item.productos || []).map((p) =>
+          p.id === prod.id
+            ? {
+                ...p,
+                imagen: ''
+              }
+            : p
+        );
+        const actualizado = {
+          ...item,
+          productos: productosActualizados
+        };
+        if (comercioSeleccionadoDetalle?.id === comercioId) {
+          setComercioSeleccionadoDetalle(actualizado);
+        }
+        return actualizado;
+      })
+    );
+    setMensajeEstado(`Foto quitada del producto "${prod.nombre}".`);
+  };
+
+  const eliminarComercio = (id) => {
+    setComercios((prev) => prev.filter((item) => item.id !== id));
+    if (comercioActivoMapa?.id === id) {
+      setComercioActivoMapa(null);
+    }
+    if (comercioSeleccionadoDetalle?.id === id) {
+      setComercioSeleccionadoDetalle(null);
+    }
+  };
+
+  const actualizarAprobacionComerciante = (correo, aprobado) => {
+    const actuales = leerCuentasComerciantes();
+    if (!actuales[correo]) return;
+    actuales[correo] = {
+      ...actuales[correo],
+      aprobado
+    };
+    guardarCuentasComerciantes(actuales);
+    setCuentasComerciantes(actuales);
+    if (!aprobado && comercianteAutenticado === correo) {
+      setComercianteAutenticado('');
+    }
+  };
+
+  const eliminarCuentaComerciante = (correo) => {
+    const actuales = leerCuentasComerciantes();
+    delete actuales[correo];
+    guardarCuentasComerciantes(actuales);
+    setCuentasComerciantes(actuales);
+    if (comercianteAutenticado === correo) {
+      setComercianteAutenticado('');
+    }
+  };
+
+  const listaCuentasComerciantes = Object.entries(cuentasComerciantes);
+  const farmaciasTurnoHoy = obtenerTurnosFarmaciasHoy(ahoraReloj);
+
+  return (
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 relative overflow-x-hidden">
+      <style>{`
+        @keyframes entrarLetraIzquierda {
+          0% { opacity: 0; transform: translateX(-48px) scale(0.88); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes entrarLetraDerecha {
+          0% { opacity: 0; transform: translateX(48px) scale(0.88); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes fusionCentro {
+          0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+          55% { transform: scale(1.14); filter: drop-shadow(0 0 22px rgba(255,255,255,0.65)); }
+          100% { transform: scale(1.05); filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); }
+        }
+        @keyframes desvanecerSplash {
+          0% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.06); }
+        }
+        @keyframes aparecerSubtitulo {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .mn-letra-m { animation: entrarLetraIzquierda 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .mn-letra-n { animation: entrarLetraDerecha 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .mn-fusion-activa { animation: fusionCentro 0.5s ease-in-out forwards; }
+        .mn-salida-activa { animation: desvanecerSplash 0.5s ease-out forwards; }
+        .mn-subtitulo-intro { animation: aparecerSubtitulo 0.55s ease-out 0.8s both; }
+      `}</style>
+
+      {mostrarSplash && (
+        <div
+          className={`fixed inset-0 z-50 bg-gradient-to-br from-orange-600 via-orange-500 to-amber-500 flex flex-col items-center justify-center text-white text-center px-4 select-none ${
+            faseSplash === 'salida' ? 'mn-salida-activa' : ''
+          }`}
+        >
+          <div
+            className={`flex items-center justify-center font-display font-black text-6xl sm:text-7xl tracking-tight ${
+              faseSplash === 'fusion' ? 'mn-fusion-activa gap-0.5' : 'gap-2'
+            }`}
+          >
+            <span className="mn-letra-m inline-block">M</span>
+            <span className="mn-letra-n inline-block">N</span>
+          </div>
+          <p className="mn-subtitulo-intro mt-4 w-full text-center text-base sm:text-xl font-display font-extrabold tracking-[0.22em] uppercase text-white">
+            Mercado Nicoleño
+          </p>
+        </div>
+      )}
+
+      <header className="bg-gradient-to-r from-orange-500 to-amber-500 text-white sticky top-0 z-40 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => irA('inicio')}
+            className="flex items-center gap-2 cursor-pointer shrink-0 transition hover:opacity-95"
+          >
+            <span className="w-8 h-8 rounded bg-white text-orange-600 font-display font-black flex items-center justify-center shadow-2xs">
+              MN
+            </span>
+            <span className="font-display font-extrabold text-base sm:text-lg">
+              Mercado Nicoleño
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMenuAbierto((prev) => !prev)}
+            aria-label="Abrir menú"
+            className="w-9 h-9 rounded bg-white/15 hover:bg-white/25 flex items-center justify-center text-lg font-bold shrink-0"
+          >
+            ☰
+          </button>
+        </div>
+
+        {menuAbierto && (
+          <nav className="bg-white text-neutral-800 border-t border-orange-400/30 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col gap-1 text-xs sm:text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => irA('inicio')}
+                className="text-left px-3 py-2 rounded-lg hover:bg-orange-50 text-neutral-800 flex items-center gap-2"
+              >
+                <span>🏠</span>
+                <span>Inicio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  document.getElementById('seccion-categorias-sn')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-left px-3 py-2 rounded-lg hover:bg-orange-50 text-neutral-800 flex items-center gap-2"
+              >
+                <span>🗂️</span>
+                <span>Categorías</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setRubroSeleccionado('Farmacia de Turno');
+                  document.getElementById('seccion-farmacias-turno-sn')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-800 flex items-center gap-2"
+              >
+                <span>✚</span>
+                <span>Farmacia de Turno</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  irAMapaYCercania();
+                }}
+                className="text-left px-3 py-2 rounded-lg hover:bg-orange-50 text-neutral-800 flex items-center gap-2"
+              >
+                <span>📍</span>
+                <span>Mapa y cercanía</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  abrirSumarLocal();
+                }}
+                className="text-left px-3 py-2 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 flex items-center gap-2"
+              >
+                <span>🏪</span>
+                <span>Sumá tu local</span>
+              </button>
+              <div className="border-t border-neutral-100 my-1" />
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setMostrarSumarLocal(false);
+                  setCuentasComerciantes(leerCuentasComerciantes());
+                  setPanelActivo('comerciante');
+                }}
+                className="text-left px-3 py-2 rounded-lg hover:bg-amber-50 text-amber-800 flex items-center gap-2"
+              >
+                <span>🧑‍💼</span>
+                <span>Panel de Comerciante</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  setMostrarSumarLocal(false);
+                  setCuentasComerciantes(leerCuentasComerciantes());
+                  setPanelActivo('admin');
+                }}
+                className="text-left px-3 py-2 rounded-lg hover:bg-neutral-100 text-neutral-800 flex items-center gap-2"
+              >
+                <span>🛡️</span>
+                <span>Panel de Administrador</span>
+              </button>
+            </div>
+          </nav>
+        )}
+      </header>
+
+      <section className="relative z-10 bg-gradient-to-b from-orange-500 via-orange-500 to-amber-500 text-white px-4 pt-8 pb-10 text-center">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs font-semibold text-white/90 bg-black/15 backdrop-blur-2xs px-3 py-1 rounded-full w-fit mx-auto">
+            <span className="capitalize">
+              {DIAS_SEMANA_ES[ahoraReloj.getDay()]}{' '}
+              {String(ahoraReloj.getDate()).padStart(2, '0')}/
+              {String(ahoraReloj.getMonth() + 1).padStart(2, '0')}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {climaSN.icono} {climaSN.temperaturaC}°C · {climaSN.estado} · San Nicolás
+            </span>
+          </div>
+          <p className="text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-orange-100">
+            SAN NICOLÁS DE LOS ARROYOS
+          </p>
+          <h1
+            style={{
+              textShadow:
+                '0 4px 14px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35)'
+            }}
+            className="text-2xl sm:text-4xl font-black tracking-tight leading-tight uppercase"
+          >
+            COMERCIOS Y OFERTAS DE SAN NICOLÁS
+          </h1>
+          <p className="text-sm sm:text-base text-orange-50 max-w-md mx-auto leading-relaxed">
+            Descubrí negocios locales, consultá precios y contactá directo por WhatsApp.
+          </p>
+
+          <div className="pt-2 flex flex-col items-center gap-2.5">
+            <div className="w-full max-w-md bg-white rounded-xl flex items-center overflow-hidden shadow-md ring-1 ring-white/40">
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    document.getElementById('seccion-comercios-sn')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                placeholder="Buscar comercio, rubro o producto..."
+                className="w-full px-4 py-2.5 text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById('seccion-comercios-sn')?.scrollIntoView({ behavior: 'smooth' })
+                }
+                aria-label="Buscar"
+                title="Buscar"
+                className="px-4 py-2.5 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 text-orange-600 border-l border-orange-100 flex items-center justify-center shrink-0 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="20" y1="20" x2="16.35" y2="16.35" />
+                </svg>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={irAMapaYCercania}
+              className="w-60 bg-white text-orange-600 hover:bg-orange-50 font-bold text-sm py-2.5 px-4 rounded-lg shadow flex items-center justify-center gap-2"
+            >
+              <span>➤</span>
+              <span>Mapa y cercanía</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={abrirSumarLocal}
+              className="w-60 bg-amber-700/80 hover:bg-amber-700 text-white font-bold text-sm py-2.5 px-4 rounded-lg shadow flex items-center justify-center gap-2"
+            >
+              <span>🏪</span>
+              <span>Sumá tu local</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <main className="relative z-10 max-w-5xl mx-auto px-4 py-7 space-y-8">
+        {mostrarSumarLocal && comercianteAutenticado && (
+          <section className="bg-white rounded-2xl border border-orange-200 p-4 sm:p-5 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-neutral-900">Sumá tu local y productos</h2>
+              <button
+                type="button"
+                onClick={() => setMostrarSumarLocal(false)}
+                className="text-xs font-bold text-neutral-500 hover:text-neutral-800"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <form onSubmit={agregarLocalRapido} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text"
+                value={nuevoLocal.nombre}
+                onChange={(e) => setNuevoLocal({ ...nuevoLocal, nombre: e.target.value })}
+                placeholder="Nombre del comercio"
+                className="rounded-xl border border-neutral-200 px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+              />
+              <select
+                value={nuevoLocal.rubro}
+                onChange={(e) => setNuevoLocal({ ...nuevoLocal, rubro: e.target.value })}
+                className="rounded-xl border border-neutral-200 px-3.5 py-2 text-sm bg-white focus:outline-none focus:border-orange-500"
+              >
+                {CATEGORIAS_CON_IMAGEN.filter((cat) => !cat.soloTurno).map((cat) => (
+                  <option key={cat.nombre} value={cat.nombre}>
+                    {cat.nombre}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={nuevoLocal.direccion}
+                onChange={(e) => setNuevoLocal({ ...nuevoLocal, direccion: e.target.value })}
+                placeholder="Dirección en San Nicolás (ej.: Mitre 250)"
+                className="rounded-xl border border-neutral-200 px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+              />
+              <input
+                type="text"
+                value={nuevoLocal.whatsapp}
+                onChange={(e) => setNuevoLocal({ ...nuevoLocal, whatsapp: e.target.value })}
+                placeholder="WhatsApp (ej.: 5493364000199)"
+                className="rounded-xl border border-neutral-200 px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+              />
+              <input
+                type="text"
+                value={nuevoLocal.descripcion}
+                onChange={(e) => setNuevoLocal({ ...nuevoLocal, descripcion: e.target.value })}
+                placeholder="Qué ofrecés (productos, horarios, servicios)"
+                className="sm:col-span-2 rounded-xl border border-neutral-200 px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+              />
+
+              <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50/40 p-3.5 space-y-3">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-orange-900">
+                  Foto de tu local / comercio (se muestra en el listado al buscar por rubro)
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="rounded-xl border border-dashed border-orange-400 bg-white px-3.5 py-2 text-xs font-bold text-orange-900 hover:bg-orange-50 cursor-pointer flex items-center justify-between gap-2">
+                    <span className="truncate">
+                      {nuevoLocal.localArchivoNombre
+                        ? `Foto local: ${nuevoLocal.localArchivoNombre}`
+                        : 'Subir foto del comercio'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={manejarArchivoFotoLocal}
+                      className="hidden"
+                    />
+                  </label>
+                  {nuevoLocal.localImagen && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNuevoLocal((prev) => ({
+                          ...prev,
+                          localImagen: '',
+                          localArchivoNombre: ''
+                        }))
+                      }
+                      className="text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-xl"
+                    >
+                      Sacar foto
+                    </button>
+                  )}
+                </div>
+                {nuevoLocal.localImagen && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img
+                      src={nuevoLocal.localImagen}
+                      alt="Vista previa del comercio"
+                      className="w-16 h-14 rounded-lg object-cover border border-orange-200"
+                    />
+                    <span className="text-xs font-semibold text-neutral-700">
+                      Foto del comercio lista para mostrar en {nuevoLocal.rubro}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-3">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-amber-900">
+                  Primer producto con foto y precio (opcional, también podés sumar más luego)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={nuevoLocal.productoNombre}
+                    onChange={(e) => setNuevoLocal({ ...nuevoLocal, productoNombre: e.target.value })}
+                    placeholder="Nombre del producto (ej.: Milanesas de ternera x kg)"
+                    className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+                  />
+                  <input
+                    type="text"
+                    value={nuevoLocal.productoPrecio}
+                    onChange={(e) => setNuevoLocal({ ...nuevoLocal, productoPrecio: e.target.value })}
+                    placeholder="Precio (ej.: 8500 o $8.500)"
+                    className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 rounded-xl border border-dashed border-amber-400 bg-white px-3.5 py-2 text-xs font-bold text-amber-900 hover:bg-amber-50 cursor-pointer flex items-center justify-between gap-2">
+                      <span className="truncate">
+                        {nuevoLocal.productoArchivoNombre
+                          ? `Foto: ${nuevoLocal.productoArchivoNombre}`
+                          : 'Subir foto desde tu dispositivo'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={manejarArchivoProductoNuevoLocal}
+                        className="hidden"
+                      />
+                    </label>
+                    {nuevoLocal.productoImagen && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNuevoLocal((prev) => ({
+                            ...prev,
+                            productoImagen: '',
+                            productoArchivoNombre: ''
+                          }))
+                        }
+                        className="text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-2 rounded-xl shrink-0"
+                      >
+                        Sacar foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {nuevoLocal.productoImagen && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img
+                      src={nuevoLocal.productoImagen}
+                      alt="Vista previa del producto"
+                      className="w-14 h-14 rounded-lg object-cover border border-amber-200"
+                    />
+                    <div className="text-xs">
+                      <p className="font-bold text-neutral-900">
+                        {nuevoLocal.productoNombre.trim() || 'Producto'}
+                      </p>
+                      <p className="font-extrabold text-orange-700">
+                        {formatearPrecioARS(nuevoLocal.productoPrecio) || 'Sin precio'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="sm:col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl"
+                >
+                  Guardar y ubicar en el mapa
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {panelActivo === 'comerciante' && (
+          <section className="bg-white rounded-2xl border border-amber-300 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full">
+                  Gestión de Local
+                </span>
+                <h2 className="text-base sm:text-lg font-extrabold text-neutral-900 mt-1">
+                  Panel de Comerciante
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPanelActivo(null)}
+                className="text-xs font-bold text-neutral-500 hover:text-neutral-800 px-2.5 py-1 rounded-lg bg-neutral-100"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-neutral-900">
+                  {modoRecuperarComerciante
+                    ? 'Recuperar contraseña de comerciante'
+                    : modoRegistroComerciante
+                      ? 'Crear cuenta única de comerciante'
+                      : 'Ingresar a mi cuenta de comerciante'}
+                </h3>
+                {comercianteAutenticado && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComercianteAutenticado('');
+                      setPasswordComerciante('');
+                      setMensajeAuthComerciante('Sesión de comerciante cerrada.');
+                      setErrorAuthComerciante('');
+                    }}
+                    className="text-xs font-bold text-red-600 hover:underline"
+                  >
+                    Cerrar sesión
+                  </button>
+                )}
+              </div>
+
+              {!comercianteAutenticado && !modoRecuperarComerciante && (
+                <div className="grid grid-cols-2 gap-1.5 bg-white p-1 rounded-xl border border-amber-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoRegistroComerciante(false);
+                      setErrorAuthComerciante('');
+                      setMensajeAuthComerciante('');
+                      setIntentosFallidosComerciante(0);
+                    }}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition ${
+                      !modoRegistroComerciante
+                        ? 'bg-orange-600 text-white'
+                        : 'text-neutral-700 hover:bg-neutral-50'
+                    }`}
+                  >
+                    Ya tengo cuenta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoRegistroComerciante(true);
+                      setErrorAuthComerciante('');
+                      setMensajeAuthComerciante('');
+                      setIntentosFallidosComerciante(0);
+                    }}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition ${
+                      modoRegistroComerciante
+                        ? 'bg-orange-600 text-white'
+                        : 'text-neutral-700 hover:bg-neutral-50'
+                    }`}
+                  >
+                    Crear cuenta nueva
+                  </button>
+                </div>
+              )}
+
+              {!comercianteAutenticado ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setErrorAuthComerciante('');
+                    setMensajeAuthComerciante('');
+                    const correo = emailComerciante.trim().toLowerCase();
+                    if (!correo) return;
+
+                    if (correo === ADMIN_EMAIL_UNICO) {
+                      setErrorAuthComerciante(
+                        'Este correo corresponde al administrador. Ingresá desde el Panel de Administrador.'
+                      );
+                      return;
+                    }
+
+                    if (!esCorreoRealValido(correo)) {
+                      setErrorAuthComerciante(
+                        'Ingresá un correo electrónico real y válido (ej.: tunombre@gmail.com).'
+                      );
+                      return;
+                    }
+
+                    const cuentas = leerCuentasComerciantes();
+
+                    if (modoRecuperarComerciante) {
+                      if (!cuentas[correo]) {
+                        setErrorAuthComerciante(
+                          'No existe una cuenta registrada con ese correo de comerciante.'
+                        );
+                        return;
+                      }
+                      if (!nuevaPasswordComerciante.trim() || nuevaPasswordComerciante.trim().length < 4) {
+                        setErrorAuthComerciante(
+                          'Ingresá una nueva contraseña única de al menos 4 caracteres.'
+                        );
+                        return;
+                      }
+                      cuentas[correo] = {
+                        ...cuentas[correo],
+                        password: nuevaPasswordComerciante
+                      };
+                      guardarCuentasComerciantes(cuentas);
+                      setCuentasComerciantes(cuentas);
+                      setNuevaPasswordComerciante('');
+                      setPasswordComerciante('');
+                      setModoRecuperarComerciante(false);
+                      setModoRegistroComerciante(false);
+                      setMensajeAuthComerciante(
+                        `Contraseña actualizada para ${correo}. Ya podés iniciar sesión con tu nueva clave.`
+                      );
+                      return;
+                    }
+
+                    if (!passwordComerciante.trim() || passwordComerciante.trim().length < 4) {
+                      setErrorAuthComerciante(
+                        'Ingresá tu contraseña única (mínimo 4 caracteres).'
+                      );
+                      return;
+                    }
+
+                    if (modoRegistroComerciante) {
+                      if (cuentas[correo]) {
+                        setErrorAuthComerciante(
+                          'Ya existe una cuenta registrada con este correo. Cambiá a "Ya tengo cuenta" para ingresar.'
+                        );
+                        return;
+                      }
+                      cuentas[correo] = {
+                        password: passwordComerciante,
+                        aprobado: false,
+                        creadoEn: new Date().toISOString()
+                      };
+                      guardarCuentasComerciantes(cuentas);
+                      setCuentasComerciantes(cuentas);
+                      setPasswordComerciante('');
+                      setModoRegistroComerciante(false);
+                      setMensajeAuthComerciante(
+                        `Cuenta creada para ${correo}. Quedó pendiente de aprobación por el administrador antes de poder ingresar.`
+                      );
+                      return;
+                    }
+
+                    const cuenta = cuentas[correo];
+                    if (!cuenta) {
+                      setErrorAuthComerciante(
+                        'Todavía no creaste una cuenta con este correo. Tocá "Crear cuenta nueva" para registrarte.'
+                      );
+                      return;
+                    }
+
+                    if (cuenta.password !== passwordComerciante) {
+                      const nuevoIntento = intentosFallidosComerciante + 1;
+                      setIntentosFallidosComerciante(nuevoIntento);
+                      setErrorAuthComerciante(
+                        `Contraseña incorrecta (intento ${nuevoIntento}). Podés volver a intentarlo las veces que quieras o elegir "¿Olvidaste tu contraseña? Recuperarla".`
+                      );
+                      return;
+                    }
+
+                    if (!cuenta.aprobado) {
+                      setIntentosFallidosComerciante(0);
+                      setErrorAuthComerciante(
+                        `Tu cuenta (${correo}) ya fue creada, pero todavía está pendiente de aprobación por el administrador.`
+                      );
+                      return;
+                    }
+
+                    setIntentosFallidosComerciante(0);
+                    setComercianteAutenticado(correo);
+                    setMensajeAuthComerciante(`Sesión iniciada como comerciante aprobado (${correo}).`);
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      Correo electrónico real
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={emailComerciante}
+                      onChange={(e) => setEmailComerciante(e.target.value)}
+                      placeholder="tucomercio@gmail.com"
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  {!modoRecuperarComerciante ? (
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">
+                        Contraseña única
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={mostrarPasswordComerciante ? 'text' : 'password'}
+                          required
+                          value={passwordComerciante}
+                          onChange={(e) => setPasswordComerciante(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-neutral-200 bg-white pl-3.5 pr-11 py-2 text-sm focus:outline-none focus:border-orange-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarPasswordComerciante((prev) => !prev)}
+                          aria-label="Mostrar u ocultar contraseña"
+                          className="absolute right-2.5 text-neutral-500 hover:text-neutral-800 p-1 rounded-lg"
+                        >
+                          {mostrarPasswordComerciante ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">
+                        Nueva contraseña única
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={mostrarPasswordComerciante ? 'text' : 'password'}
+                          required
+                          value={nuevaPasswordComerciante}
+                          onChange={(e) => setNuevaPasswordComerciante(e.target.value)}
+                          placeholder="Escribí tu nueva contraseña"
+                          className="w-full rounded-xl border border-neutral-200 bg-white pl-3.5 pr-11 py-2 text-sm focus:outline-none focus:border-orange-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarPasswordComerciante((prev) => !prev)}
+                          aria-label="Mostrar u ocultar nueva contraseña"
+                          className="absolute right-2.5 text-neutral-500 hover:text-neutral-800 p-1 rounded-lg"
+                        >
+                          {mostrarPasswordComerciante ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    {!modoRegistroComerciante ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModoRecuperarComerciante((prev) => !prev);
+                          setIntentosFallidosComerciante(0);
+                          setMensajeAuthComerciante('');
+                          setErrorAuthComerciante('');
+                        }}
+                        className="text-xs font-bold text-orange-600 hover:underline"
+                      >
+                        {modoRecuperarComerciante
+                          ? '← Volver a iniciar sesión'
+                          : '¿Olvidaste tu contraseña? Recuperarla'}
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-neutral-600">
+                        Requiere aprobación del administrador tras registrarte.
+                      </span>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl"
+                    >
+                      {modoRecuperarComerciante
+                        ? 'Guardar nueva contraseña'
+                        : modoRegistroComerciante
+                          ? 'Crear cuenta'
+                          : 'Ingresar'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  Sesión activa como comerciante aprobado ({comercianteAutenticado}).
+                </p>
+              )}
+
+              {errorAuthComerciante && (
+                <p className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {errorAuthComerciante}
+                </p>
+              )}
+
+              {mensajeAuthComerciante && !comercianteAutenticado && (
+                <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  {mensajeAuthComerciante}
+                </p>
+              )}
+            </div>
+
+            {comercianteAutenticado && (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs sm:text-sm text-neutral-600">
+                    Administrá tus locales cargados en San Nicolás, agregá productos con foto y precio o agregá uno nuevo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPanelActivo(null);
+                      setMostrarSumarLocal(true);
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shrink-0"
+                  >
+                    + Nuevo local
+                  </button>
+                </div>
+
+                {comercios.length === 0 ? (
+                  <p className="text-xs sm:text-sm text-neutral-500 text-center py-4 bg-neutral-50 rounded-xl border border-neutral-200">
+                    Aún no hay comercios cargados desde este panel.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {comercios.map((c) => {
+                      const prodDraft = nuevoProductoPorComercio[c.id] || {
+                        nombre: '',
+                        precio: '',
+                        imagen: '',
+                        archivoNombre: ''
+                      };
+                      return (
+                        <div
+                          key={c.id}
+                          className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50 space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-extrabold text-neutral-900">{c.nombre}</p>
+                              <p className="text-xs text-neutral-600">
+                                {c.rubro} · {c.direccion}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setComercioActivoMapa(c);
+                                  setMensajeEstado(`Ubicación del local: ${c.nombre} (${c.direccion})`);
+                                  irAMapaYCercania();
+                                }}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100"
+                              >
+                                Ver en mapa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => eliminarComercio(c.id)}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          </div>
+
+                          <form
+                            onSubmit={(e) => agregarProductoAComercio(c.id, e)}
+                            className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-neutral-200/80"
+                          >
+                            <input
+                              type="text"
+                              value={prodDraft.nombre}
+                              onChange={(e) =>
+                                setNuevoProductoPorComercio((prev) => ({
+                                  ...prev,
+                                  [c.id]: { ...prodDraft, nombre: e.target.value }
+                                }))
+                              }
+                              placeholder="Nombre del producto"
+                              className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:border-orange-500"
+                            />
+                            <input
+                              type="text"
+                              value={prodDraft.precio}
+                              onChange={(e) =>
+                                setNuevoProductoPorComercio((prev) => ({
+                                  ...prev,
+                                  [c.id]: { ...prodDraft, precio: e.target.value }
+                                }))
+                              }
+                              placeholder="Precio (ej.: 4500)"
+                              className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:border-orange-500"
+                            />
+                            <label className="rounded-lg border border-dashed border-neutral-300 bg-white px-3 py-1.5 text-[11px] font-bold text-neutral-700 hover:bg-neutral-50 cursor-pointer flex items-center justify-between gap-1">
+                              <span className="truncate">
+                                {prodDraft.archivoNombre || 'Foto producto'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    if (typeof reader.result === 'string') {
+                                      setNuevoProductoPorComercio((prev) => ({
+                                        ...prev,
+                                        [c.id]: {
+                                          ...prodDraft,
+                                          imagen: reader.result,
+                                          archivoNombre: file.name
+                                        }
+                                      }));
+                                    }
+                                  };
+                                  reader.readAsDataURL(file);
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="submit"
+                              className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+                            >
+                              + Agregar producto
+                            </button>
+                          </form>
+
+                          {(c.productos || []).length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              {(c.productos || []).map((prod) => {
+                                const draftProd = obtenerBorradorEdicionProducto(prod);
+                                return (
+                                  <div
+                                    key={prod.id}
+                                    className="bg-white border border-neutral-200 rounded-xl p-2.5 space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        {draftProd.imagen ? (
+                                          <img
+                                            src={draftProd.imagen}
+                                            alt={draftProd.nombre || prod.nombre}
+                                            className="w-12 h-12 rounded-lg object-cover shrink-0 bg-neutral-100 border border-neutral-200"
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 rounded-lg shrink-0 bg-neutral-100 border border-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-400">
+                                            Sin foto
+                                          </div>
+                                        )}
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-extrabold text-neutral-900 truncate">
+                                            {draftProd.nombre || prod.nombre}
+                                          </p>
+                                          <p className="text-xs font-extrabold text-orange-700">
+                                            {formatearPrecioARS(draftProd.precio) || prod.precio}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => quitarProductoDeComercio(c.id, prod.id)}
+                                        className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 shrink-0"
+                                      >
+                                        Borrar producto
+                                      </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-1 border-t border-neutral-100">
+                                      <input
+                                        type="text"
+                                        value={draftProd.nombre}
+                                        onChange={(e) =>
+                                          actualizarCampoEdicionProducto(prod, 'nombre', e.target.value)
+                                        }
+                                        placeholder="Nombre"
+                                        className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs focus:outline-none focus:border-orange-500"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={draftProd.precio}
+                                        onChange={(e) =>
+                                          actualizarCampoEdicionProducto(prod, 'precio', e.target.value)
+                                        }
+                                        placeholder="Nuevo precio"
+                                        className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs focus:outline-none focus:border-orange-500"
+                                      />
+                                      <label className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-2.5 py-1 text-[11px] font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer flex items-center justify-between gap-1">
+                                        <span className="truncate">
+                                          {draftProd.archivoNombre || 'Cambiar foto'}
+                                        </span>
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = () => {
+                                              if (typeof reader.result === 'string') {
+                                                setEdicionesProducto((prev) => ({
+                                                  ...prev,
+                                                  [prod.id]: {
+                                                    ...draftProd,
+                                                    imagen: reader.result,
+                                                    archivoNombre: file.name
+                                                  }
+                                                }));
+                                              }
+                                            };
+                                            reader.readAsDataURL(file);
+                                          }}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                      <button
+                                        type="button"
+                                        onClick={() => quitarFotoEdicionProducto(c.id, prod)}
+                                        disabled={!draftProd.imagen}
+                                        className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 disabled:opacity-40"
+                                      >
+                                        Sacar foto
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => guardarEdicionProducto(c.id, prod)}
+                                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1 rounded-lg"
+                                      >
+                                        Guardar cambios
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
+
+        {panelActivo === 'admin' && (
+          <section className="bg-white rounded-2xl border border-neutral-300 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-700 bg-neutral-100 px-2.5 py-0.5 rounded-full">
+                  Control General
+                </span>
+                <h2 className="text-base sm:text-lg font-extrabold text-neutral-900 mt-1">
+                  Panel de Administrador
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPanelActivo(null)}
+                className="text-xs font-bold text-neutral-500 hover:text-neutral-800 px-2.5 py-1 rounded-lg bg-neutral-100"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-neutral-900">
+                  {modoRecuperarAdmin
+                    ? 'Recuperar contraseña de administrador'
+                    : 'Acceso exclusivo de administrador'}
+                </h3>
+                {adminAutenticado && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminAutenticado(false);
+                      setPasswordAdmin('');
+                      setMensajeAuthAdmin('Sesión de administrador cerrada.');
+                      setErrorAuthAdmin('');
+                    }}
+                    className="text-xs font-bold text-red-600 hover:underline"
+                  >
+                    Cerrar sesión
+                  </button>
+                )}
+              </div>
+
+              {!adminAutenticado ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setErrorAuthAdmin('');
+                    setMensajeAuthAdmin('');
+                    const correo = emailAdmin.trim().toLowerCase();
+                    if (correo !== ADMIN_EMAIL_UNICO) {
+                      setErrorAuthAdmin(
+                        'Acceso denegado: este panel está habilitado únicamente para la cuenta principal del administrador.'
+                      );
+                      return;
+                    }
+                    if (modoRecuperarAdmin) {
+                      setMensajeAuthAdmin(
+                        `Enviamos las instrucciones de recuperación al correo autorizado (${ADMIN_EMAIL_UNICO}).`
+                      );
+                      return;
+                    }
+                    if (!passwordAdmin.trim()) {
+                      setErrorAuthAdmin('Ingresá la contraseña de administrador.');
+                      return;
+                    }
+                    if (passwordAdmin !== ADMIN_PASSWORD_UNICA) {
+                      setErrorAuthAdmin('Contraseña incorrecta para la cuenta de administrador.');
+                      return;
+                    }
+                    setAdminAutenticado(true);
+                    setCuentasComerciantes(leerCuentasComerciantes());
+                    setMensajeAuthAdmin(
+                      `Sesión iniciada como único administrador autorizado (${ADMIN_EMAIL_UNICO}).`
+                    );
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">
+                      Correo de administrador
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={emailAdmin}
+                      onChange={(e) => setEmailAdmin(e.target.value)}
+                      placeholder="Correo autorizado del administrador"
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  {!modoRecuperarAdmin && (
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">
+                        Contraseña
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type={mostrarPasswordAdmin ? 'text' : 'password'}
+                          required
+                          value={passwordAdmin}
+                          onChange={(e) => setPasswordAdmin(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-neutral-200 bg-white pl-3.5 pr-11 py-2 text-sm focus:outline-none focus:border-orange-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarPasswordAdmin((prev) => !prev)}
+                          aria-label="Mostrar u ocultar contraseña de administrador"
+                          className="absolute right-2.5 text-neutral-500 hover:text-neutral-800 p-1 rounded-lg"
+                        >
+                          {mostrarPasswordAdmin ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModoRecuperarAdmin((prev) => !prev);
+                        setMensajeAuthAdmin('');
+                        setErrorAuthAdmin('');
+                      }}
+                      className="text-xs font-bold text-orange-600 hover:underline"
+                    >
+                      {modoRecuperarAdmin
+                        ? '← Volver a iniciar sesión'
+                        : '¿Olvidaste tu contraseña? Recuperarla'}
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="bg-neutral-900 hover:bg-neutral-800 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl"
+                    >
+                      {modoRecuperarAdmin ? 'Enviar recuperación' : 'Ingresar'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  Sesión activa como único administrador autorizado ({ADMIN_EMAIL_UNICO}).
+                </p>
+              )}
+
+              {errorAuthAdmin && (
+                <p className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {errorAuthAdmin}
+                </p>
+              )}
+
+              {mensajeAuthAdmin && !adminAutenticado && (
+                <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  {mensajeAuthAdmin}
+                </p>
+              )}
+            </div>
+
+            {adminAutenticado && (
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-neutral-900">
+                      Cuentas de comerciantes ({listaCuentasComerciantes.length})
+                    </h3>
+                  </div>
+
+                  {listaCuentasComerciantes.length === 0 ? (
+                    <p className="text-xs sm:text-sm text-neutral-500 text-center py-4 bg-neutral-50 rounded-xl border border-neutral-200">
+                      Todavía no hay comerciantes registrados esperando aprobación.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {listaCuentasComerciantes.map(([correo, datos]) => (
+                        <div
+                          key={correo}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-neutral-200 bg-neutral-50"
+                        >
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-extrabold text-neutral-900">{correo}</p>
+                            <span
+                              className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                                datos.aprobado
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {datos.aprobado ? 'Aprobada' : 'Pendiente de aprobación'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!datos.aprobado ? (
+                              <button
+                                type="button"
+                                onClick={() => actualizarAprobacionComerciante(correo, true)}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                              >
+                                Aprobar cuenta
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => actualizarAprobacionComerciante(correo, false)}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-900 hover:bg-amber-200"
+                              >
+                                Suspender
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => eliminarCuentaComerciante(correo)}
+                              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2.5 pt-2 border-t border-neutral-100">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-neutral-900">
+                      Comercios publicados ({comercios.length})
+                    </h3>
+                  </div>
+
+                  {comercios.length === 0 ? (
+                    <p className="text-xs sm:text-sm text-neutral-500 text-center py-4 bg-neutral-50 rounded-xl border border-neutral-200">
+                      No hay comercios registrados para moderar todavía.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {comercios.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-neutral-200 bg-neutral-50"
+                        >
+                          <div>
+                            <p className="text-sm font-extrabold text-neutral-900">{c.nombre}</p>
+                            <p className="text-xs text-neutral-500">
+                              {c.rubro} · {c.direccion} · WhatsApp: {c.whatsapp}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => eliminarComercio(c.id)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section id="seccion-categorias-sn" className="space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-neutral-900">Categorías</h2>
+            <p className="text-xs sm:text-sm text-neutral-500">
+              Elegí un rubro para ver productos y servicios disponibles
+            </p>
+            {rubroSeleccionado !== 'Todos' && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setRubroSeleccionado('Todos')}
+                  className="text-xs font-bold text-orange-600 hover:underline"
+                >
+                  Mostrando: {rubroSeleccionado} · Ver todas
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {CATEGORIAS_CON_IMAGEN.map((cat) => {
+              const activa = rubroSeleccionado === cat.nombre;
+              return (
+                <button
+                  key={cat.nombre}
+                  type="button"
+                  onClick={() => {
+                    const siguiente = activa ? 'Todos' : cat.nombre;
+                    setRubroSeleccionado(siguiente);
+                    setComercioSeleccionadoDetalle(null);
+                    if (siguiente === 'Farmacia de Turno') {
+                      setTimeout(() => {
+                        document
+                          .getElementById('seccion-farmacias-turno-sn')
+                          ?.scrollIntoView({ behavior: 'smooth' });
+                      }, 50);
+                    } else if (siguiente !== 'Todos') {
+                      setTimeout(() => {
+                        document
+                          .getElementById('seccion-comercios-sn')
+                          ?.scrollIntoView({ behavior: 'smooth' });
+                      }, 50);
+                    }
+                  }}
+                  className={`bg-white rounded-xl border overflow-hidden text-center flex flex-col transition-transform hover:-translate-y-0.5 ${
+                    activa
+                      ? cat.soloTurno
+                        ? 'border-emerald-600 ring-2 ring-emerald-200'
+                        : 'border-orange-500 ring-2 ring-orange-200'
+                      : cat.soloTurno
+                        ? 'border-emerald-200 hover:border-emerald-400'
+                        : 'border-neutral-200 hover:border-orange-300'
+                  }`}
+                >
+                  <div className="h-28 sm:h-32 w-full overflow-hidden bg-neutral-100 relative">
+                    <img
+                      src={cat.imagen}
+                      alt={cat.nombre}
+                      className="w-full h-full object-cover"
+                    />
+                    {cat.soloTurno && (
+                      <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full shadow">
+                        Solo turno
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-2.5 sm:p-3 flex-1 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-bold text-neutral-900 leading-snug">
+                      {cat.nombre}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {rubroSeleccionado === 'Farmacia de Turno' ? (
+          <section
+            id="seccion-farmacias-turno-sn"
+            className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-6 space-y-5 shadow-sm"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100 pb-3">
+              <div>
+                <span className="inline-block text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                  Servicio Público · Guardia 24 hs (08:30 a 08:30)
+                </span>
+                <h2 className="text-lg sm:text-xl font-extrabold text-neutral-900 mt-1">
+                  Farmacias de Turno en San Nicolás de los Arroyos
+                </h2>
+                <p className="text-xs sm:text-sm text-neutral-600 mt-0.5">
+                  Esta categoría es exclusivamente informativa para consultar qué farmacias están de guardia hoy.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRubroSeleccionado('Todos')}
+                className="text-xs font-bold text-neutral-600 hover:text-neutral-900 bg-neutral-100 px-3 py-1.5 rounded-lg self-start sm:self-center shrink-0"
+              >
+                ← Volver a rubros
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-emerald-800">
+                  {farmaciasTurnoHoy.vigente.etiqueta}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {farmaciasTurnoHoy.vigente.farmacias.map((f) => (
+                  <div
+                    key={f.nombre}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold text-neutral-900">{f.nombre}</p>
+                      <p className="text-xs text-neutral-600">{f.direccion}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComercioActivoMapa({
+                          nombre: f.nombre,
+                          direccion: f.direccion
+                        });
+                        setMensajeEstado(`Farmacia de turno ubicada en el mapa: ${f.nombre} (${f.direccion})`);
+                        irAMapaYCercania();
+                      }}
+                      className="text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg shrink-0"
+                    >
+                      Ver en mapa
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-neutral-100">
+              <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-neutral-800">
+                {farmaciasTurnoHoy.siguiente.etiqueta}
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {farmaciasTurnoHoy.siguiente.farmacias.map((f) => (
+                  <div
+                    key={f.nombre}
+                    className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold text-neutral-900">{f.nombre}</p>
+                      <p className="text-xs text-neutral-600">{f.direccion}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComercioActivoMapa({
+                          nombre: f.nombre,
+                          direccion: f.direccion
+                        });
+                        setMensajeEstado(`Farmacia de turno ubicada en el mapa: ${f.nombre} (${f.direccion})`);
+                        irAMapaYCercania();
+                      }}
+                      className="text-xs font-bold text-orange-700 bg-white hover:bg-orange-50 border border-neutral-200 px-3 py-1.5 rounded-lg shrink-0"
+                    >
+                      Ver en mapa
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section id="seccion-comercios-sn" className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-neutral-900">Comercios disponibles</h2>
+              <span className="text-xs font-semibold text-neutral-600">
+                {comerciosFiltrados.length} {comerciosFiltrados.length === 1 ? 'local' : 'locales'}
+              </span>
+            </div>
+
+            {comerciosFiltrados.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-neutral-200 p-6 text-center space-y-2">
+                <p className="font-bold text-neutral-800">Todavía no hay comercios cargados</p>
+                <p className="text-sm text-neutral-500">
+                  Usá el botón &ldquo;Sumá tu local&rdquo; para cargar el primer comercio y ubicarlo en el mapa.
+                </p>
+              </div>
+            ) : comercioSeleccionadoDetalle ? (
+              <div className="bg-white rounded-2xl border border-orange-200 overflow-hidden shadow-sm space-y-4">
+                <div className="px-4 py-3 bg-orange-50/60 border-b border-orange-100 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setComercioSeleccionadoDetalle(null)}
+                    className="text-xs font-bold text-orange-700 hover:underline"
+                  >
+                    ← Volver a los comercios
+                  </button>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-orange-700 bg-white px-2.5 py-0.5 rounded-full border border-orange-200">
+                    {comercioSeleccionadoDetalle.rubro}
+                  </span>
+                </div>
+
+                <div className="px-4 sm:px-5 space-y-4 pb-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                    <div className="h-44 sm:h-40 w-full rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200">
+                      <img
+                        src={
+                          comercioSeleccionadoDetalle.imagen ||
+                          CATEGORIAS_CON_IMAGEN.find(
+                            (c) => c.nombre === comercioSeleccionadoDetalle.rubro
+                          )?.imagen ||
+                          CATEGORIAS_CON_IMAGEN[0].imagen
+                        }
+                        alt={comercioSeleccionadoDetalle.nombre}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-2">
+                      <h3 className="text-lg sm:text-xl font-extrabold text-neutral-900">
+                        {comercioSeleccionadoDetalle.nombre}
+                      </h3>
+                      <p className="text-xs sm:text-sm font-semibold text-neutral-600">
+                        {comercioSeleccionadoDetalle.direccion}
+                      </p>
+                      <p className="text-sm text-neutral-600">
+                        {comercioSeleccionadoDetalle.descripcion}
+                      </p>
+                      <div className="pt-1 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComercioActivoMapa(comercioSeleccionadoDetalle);
+                            setMensajeEstado(
+                              `Ubicación del comercio: ${comercioSeleccionadoDetalle.nombre} — ${comercioSeleccionadoDetalle.direccion}`
+                            );
+                            irAMapaYCercania();
+                          }}
+                          className="text-xs font-bold text-orange-600 hover:underline"
+                        >
+                          Ver en mapa
+                        </button>
+                        <a
+                          href={`https://wa.me/${comercioSeleccionadoDetalle.whatsapp}?text=${encodeURIComponent(
+                            `Hola ${comercioSeleccionadoDetalle.nombre}, los vi en Mercado Nicoleño.`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg"
+                        >
+                          WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-neutral-100 space-y-3">
+                    <h4 className="text-sm font-extrabold text-neutral-900">
+                      Productos del local
+                    </h4>
+                    {(comercioSeleccionadoDetalle.productos || []).length === 0 ? (
+                      <p className="text-xs sm:text-sm text-neutral-500 bg-neutral-50 rounded-xl p-4 border border-neutral-200 text-center">
+                        Este comercio aún no cargó productos en su catálogo.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {(comercioSeleccionadoDetalle.productos || []).map((prod) => (
+                          <div
+                            key={prod.id}
+                            className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5"
+                          >
+                            {prod.imagen && (
+                              <img
+                                src={prod.imagen}
+                                alt={prod.nombre}
+                                className="w-16 h-16 rounded-lg object-cover shrink-0 bg-white border border-neutral-200"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-extrabold text-neutral-900 truncate">
+                                {prod.nombre}
+                              </p>
+                              <p className="text-sm font-extrabold text-orange-700">
+                                {prod.precio}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {comerciosFiltrados.map((comercio) => {
+                  const fotoLocal =
+                    comercio.imagen && !String(comercio.imagen).includes('leaflet')
+                      ? comercio.imagen
+                      : CATEGORIAS_CON_IMAGEN.find((c) => c.nombre === comercio.rubro)?.imagen ||
+                        CATEGORIAS_CON_IMAGEN[0].imagen;
+                  return (
+                    <article
+                      key={comercio.id}
+                      onClick={() => {
+                        setComercioSeleccionadoDetalle(comercio);
+                        setComercioActivoMapa(comercio);
+                        setMensajeEstado('');
+                      }}
+                      className="bg-white rounded-2xl border border-neutral-200 overflow-hidden flex flex-col justify-between cursor-pointer hover:border-orange-300 transition"
+                    >
+                      <div>
+                        <div className="h-44 w-full overflow-hidden bg-neutral-100">
+                          <img
+                            src={fotoLocal}
+                            alt={comercio.nombre}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="p-4 space-y-2">
+                          <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-orange-700 bg-orange-50 px-2.5 py-1 rounded-full">
+                            {comercio.rubro}
+                          </span>
+                          <h3 className="text-base font-extrabold text-neutral-900">{comercio.nombre}</h3>
+                          <p className="text-xs font-medium text-neutral-500">{comercio.direccion}</p>
+                          <p className="text-sm text-neutral-600">{comercio.descripcion}</p>
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3 border-t border-neutral-100 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setComercioActivoMapa(comercio);
+                            setMensajeEstado(
+                              `Ubicación del comercio: ${comercio.nombre} — ${comercio.direccion}`
+                            );
+                            irAMapaYCercania();
+                          }}
+                          className="text-xs font-bold text-orange-600 hover:underline"
+                        >
+                          Ver en mapa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setComercioSeleccionadoDetalle(comercio);
+                            setComercioActivoMapa(comercio);
+                          }}
+                          className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg"
+                        >
+                          Ver productos
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        <section
+          id="seccion-mapa-san-nicolas"
+          className="bg-white rounded-2xl border border-orange-100 p-4 sm:p-5 space-y-4"
+        >
+          <div>
+            <h2 className="text-base sm:text-lg font-extrabold text-neutral-900">
+              Ubicación en San Nicolás
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-600">
+              {comercioActivoMapa ? (
+                <>
+                  Ubicación:{' '}
+                  <strong className="text-neutral-900">{comercioActivoMapa.nombre}</strong> —{' '}
+                  <span className="text-orange-700 font-semibold">
+                    {comercioActivoMapa.direccion}
+                  </span>
+                </>
+              ) : (
+                'Tocá "Ver en mapa" en cualquier comercio o farmacia de turno para ver su ubicación.'
+              )}
+            </p>
+          </div>
+
+          {mensajeEstado && (
+            <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+              {mensajeEstado}
+            </p>
+          )}
+
+          <div className="w-full h-64 sm:h-72 rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100">
+            <iframe
+              key={`${comercioActivoMapa?.direccion || 'centro'}-${comercioActivoMapa?.nombre || ''}`}
+              title={`Mapa de ${comercioActivoMapa?.direccion || 'San Nicolás de los Arroyos'}`}
+              src={construirUrlMapaSN(comercioActivoMapa?.direccion, comercioActivoMapa?.nombre)}
+              className="w-full h-full border-0"
+              loading="lazy"
+            />
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export default App;
